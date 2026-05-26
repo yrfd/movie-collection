@@ -2,7 +2,7 @@
  * API 接口封装 - 调用后端 Spring Boot 服务
  */
 
-const API_BASE_URL = 'https://223421ad.r22.cpolar.top';
+const API_BASE_URL = 'http://localhost:8080';
 
 // 获取 Token
 function getToken() {
