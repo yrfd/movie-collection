@@ -37,7 +37,7 @@ mybatis:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 jwt:
-  secret: movie_system_secret_key_2026
+  secret: bW92aWVfc3lzdGVtX3NlY3JldF9rZXlfMjAyNg=
   expiration: 86400000
 
 logging:

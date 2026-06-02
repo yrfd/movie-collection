@@ -32,15 +32,15 @@ async function request(url, options = {}) {
         if (data.code === 401) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
-            // 不自动跳转，让调用方处理
         }
 
         return data;
     } catch (error) {
         console.error('API请求失败:', error);
+        // 返回更详细的错误信息
         return {
             code: 500,
-            message: '网络请求失败，请检查后端服务是否启动'
+            message: error.message || '网络请求失败，请检查：\n1. 后端服务是否启动\n2. 网络连接是否正常'
         };
     }
 }
