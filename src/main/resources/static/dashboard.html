@@ -221,25 +221,158 @@
     const container = document.getElementById('ratingStars');
     if (!container) return;
     container.innerHTML = '';
+    currentRating = 0;
 
+    // 生成5个星星，每个星星代表1分
     for (let i = 1; i <= 5; i++) {
       const star = document.createElement('span');
       star.className = 'star';
-      star.innerHTML = '☆';
-      star.style.fontSize = '24px';
+      star.setAttribute('data-value', i);  // 星星对应的分值（1,2,3,4,5）
+      star.innerHTML = '★';
+      star.style.fontSize = '32px';
       star.style.cursor = 'pointer';
-      star.onclick = () => setRating(i);
+      star.style.display = 'inline-block';
+      star.style.position = 'relative';
+
+      // 根据当前评分设置显示样式
+      updateStarDisplay(star, i, currentRating);
+
+      // 绑定点击事件
+      star.onclick = (function(starValue) {
+        return function(e) {
+          const rect = this.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const starWidth = rect.width;
+          // 判断点击左半还是右半
+          const isHalf = mouseX < starWidth / 2;
+          let newRating = starValue;
+          if (isHalf) {
+            newRating = starValue - 0.5;
+            if (newRating < 0) newRating = 0;
+          }
+          setRating(newRating);
+        };
+      })(i);
+
+      // 绑定鼠标移动事件（预览）
+      star.onmousemove = (function(starValue) {
+        return function(e) {
+          const rect = this.getBoundingClientRect();
+          const mouseX = e.clientX - rect.left;
+          const starWidth = rect.width;
+          const isHalf = mouseX < starWidth / 2;
+          const previewValue = isHalf ? starValue - 0.5 : starValue;
+          previewRating(previewValue);
+        };
+      })(i);
+
+      star.onmouseleave = () => resetStarsDisplay();
+
       container.appendChild(star);
+    }
+
+    // 添加评分显示文字
+    if (!document.getElementById('ratingValueDisplay')) {
+      const ratingDisplay = document.createElement('div');
+      ratingDisplay.id = 'ratingValueDisplay';
+      ratingDisplay.className = 'rating-value-display';
+      ratingDisplay.innerHTML = '当前评分：<span id="currentRatingDisplay">0</span> 分';
+      container.parentNode.appendChild(ratingDisplay);
     }
   }
 
+  // 更新单个星星的显示
+  function updateStarDisplay(star, starValue, rating) {
+    // 清除半星样式
+    star.classList.remove('half-star');
+    star.style.color = '';
+
+    if (rating >= starValue) {
+      // 整星全亮
+      star.style.color = '#fbbf24';
+    } else if (rating >= starValue - 0.5) {
+      // 半星：左半金色，右半灰色
+      star.classList.add('half-star');
+      star.style.color = '#d1d5db';
+    } else {
+      // 无星
+      star.style.color = '#d1d5db';
+    }
+  }
+
+  // 预览评分（鼠标悬停时）
+  function previewRating(previewValue) {
+    const allStars = document.querySelectorAll('#ratingStars .star');
+    allStars.forEach((star, index) => {
+      const starValue = index + 1;
+      star.classList.remove('half-star');
+
+      if (previewValue >= starValue) {
+        star.style.color = '#fbbf24';
+      } else if (previewValue >= starValue - 0.5) {
+        star.classList.add('half-star');
+        star.style.color = '#d1d5db';
+      } else {
+        star.style.color = '#d1d5db';
+      }
+    });
+
+    // 显示预览分数
+    const ratingDisplay = document.getElementById('currentRatingDisplay');
+    if (ratingDisplay) {
+      ratingDisplay.textContent = previewValue.toFixed(1);
+      ratingDisplay.style.color = '#f59e0b';
+    }
+  }
+
+  // 重置星星显示为当前评分
+  function resetStarsDisplay() {
+    const allStars = document.querySelectorAll('#ratingStars .star');
+    allStars.forEach((star, index) => {
+      const starValue = index + 1;
+      updateStarDisplay(star, starValue, currentRating);
+    });
+
+    // 恢复显示当前评分
+    const ratingDisplay = document.getElementById('currentRatingDisplay');
+    if (ratingDisplay) {
+      ratingDisplay.textContent = currentRating.toFixed(1);
+      ratingDisplay.style.color = '';
+    }
+  }
+
+  // 设置评分
   function setRating(value) {
     currentRating = value;
     document.getElementById('personalRating').value = value;
-    const stars = document.querySelectorAll('#ratingStars .star');
-    stars.forEach((star, index) => {
-      star.innerHTML = index < value ? '★' : '☆';
+
+    // 更新所有星星的显示
+    const allStars = document.querySelectorAll('#ratingStars .star');
+    allStars.forEach((star, index) => {
+      const starValue = index + 1;
+      updateStarDisplay(star, starValue, currentRating);
     });
+
+    // 更新评分显示
+    const ratingDisplay = document.getElementById('currentRatingDisplay');
+    if (ratingDisplay) {
+      ratingDisplay.textContent = currentRating.toFixed(1);
+    }
+  }
+
+  // 更新编辑时的评分显示
+  function updateRatingStarsDisplay() {
+    const allStars = document.querySelectorAll('#ratingStars .star');
+    allStars.forEach((star, index) => {
+      const starValue = index + 1;
+      updateStarDisplay(star, starValue, currentRating);
+    });
+
+    const ratingDisplay = document.getElementById('currentRatingDisplay');
+    if (ratingDisplay) {
+      ratingDisplay.textContent = currentRating.toFixed(1);
+    }
+    document.getElementById('personalRating').value = currentRating;
   }
 
   // 加载电影列表

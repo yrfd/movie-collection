@@ -29,19 +29,20 @@ function showToast(message, type = 'info') {
 
 // 渲染星星评分
 function renderStars(rating, size = 'small') {
-  const fullStars = Math.floor(rating);
-  const halfStar = rating - fullStars >= 0.5;
   const sizeClass = size === 'large' ? 'star-large' : (size === 'small' ? 'star-small' : '');
-
+  const ratingValue = parseFloat(rating) || 0;
   let stars = '<div class="stars-container">';
 
   for (let i = 1; i <= 5; i++) {
-    if (i <= fullStars) {
-      stars += `<span class="star active ${sizeClass}">★</span>`;
-    } else if (i === fullStars + 1 && halfStar) {
-      stars += `<span class="star active ${sizeClass}">½</span>`;
+    if (ratingValue >= i) {
+      // 整星全亮
+      stars += `<span class="star active ${sizeClass}" style="color: #fbbf24;">★</span>`;
+    } else if (ratingValue >= i - 0.5) {
+      // 半星
+      stars += `<span class="star active half-star ${sizeClass}" style="position: relative; display: inline-block; color: #d1d5db;">★</span>`;
     } else {
-      stars += `<span class="star ${sizeClass}">☆</span>`;
+      // 无星
+      stars += `<span class="star ${sizeClass}" style="color: #d1d5db;">☆</span>`;
     }
   }
 

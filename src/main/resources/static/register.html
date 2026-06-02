@@ -38,13 +38,13 @@
     <form id="registerForm">
       <div class="form-group">
         <label class="form-label">用户名</label>
-        <input type="text" id="username" class="form-input" placeholder="4-20位字母、数字或下划线" required>
-        <span class="form-hint">4-20个字符，支持字母、数字、下划线</span>
+        <input type="text" id="username" class="form-input" placeholder="4-20个字符，仅支持字母、数字、下划线" required>
+        <span class="form-hint">4-20个字符，仅支持字母、数字、下划线</span>
       </div>
 
       <div class="form-group">
         <label class="form-label">密码</label>
-        <input type="password" id="password" class="form-input" placeholder="6-32位字符" required>
+        <input type="password" id="password" class="form-input" placeholder="6-32位字符，仅支持字母、数字、符号（不支持空格）" required>
         <div class="password-strength">
           <div class="password-strength-bar" id="strengthBar"></div>
         </div>
@@ -223,9 +223,16 @@
       return;
     }
 
-    // 验证密码
+    // 验证密码长度
     if (password.length < 6 || password.length > 32) {
       showError('密码长度必须为6-32位');
+      return;
+    }
+
+    // 密码格式校验：不允许空格，只能包含数字、字母、符号
+    const passwordRegex = /^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]+$/;
+    if (!passwordRegex.test(password)) {
+      showError('密码只能包含数字、字母和符号，不能包含空格');
       return;
     }
 

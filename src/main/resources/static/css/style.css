@@ -1592,3 +1592,78 @@ body {
     width: 50px !important;
   }
 }
+
+/* ==================== 半星样式（左半实心、右半空心） ==================== */
+.star {
+  position: relative;
+  display: inline-block;
+  transition: all 0.2s ease;
+}
+
+/* 半星：左半部分金色，右半部分灰色 */
+.star.half-star {
+  color: #d1d5db;  /* 右半部分灰色 */
+}
+
+.star.half-star::before {
+  content: '★';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 50%;
+  overflow: hidden;
+  color: #fbbf24;  /* 左半部分金色 */
+  z-index: 1;
+}
+
+/* 评分星星容器 */
+#ratingStars {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+#ratingStars .star {
+  font-size: 32px;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+#ratingStars .star:hover {
+  transform: scale(1.1);
+}
+
+/* 评分显示文字 */
+.rating-value-display {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--gray-600);
+}
+
+.rating-value-display span {
+  font-weight: 600;
+  color: var(--primary);
+}
+
+/* 卡片中的星星样式 */
+.stars-container {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.star-small {
+  font-size: 14px;
+}
+
+.star-small.half-star::before {
+  font-size: 14px;
+}
+
+.star-large {
+  font-size: 24px;
+}
+
+.star-large.half-star::before {
+  font-size: 24px;
+}

@@ -452,6 +452,13 @@
         return;
       }
 
+      // 密码格式校验：不允许空格，只能包含数字、字母、符号
+      const passwordRegex = /^[A-Za-z0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]+$/;
+      if (!passwordRegex.test(newPassword)) {
+        showPasswordModalError('密码只能包含数字、字母和符号，不能包含空格');
+        return;
+      }
+
       // 检查新密码是否与旧密码相同
       if (oldPassword === newPassword) {
         showPasswordModalError('新密码不能与旧密码相同');

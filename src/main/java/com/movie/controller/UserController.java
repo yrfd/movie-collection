@@ -48,17 +48,28 @@ public class UserController {
             return ApiResponse.error(400, "所有字段都不能为空");
         }
 
-        // 2. 验证邮箱格式
+        // 2. 密码格式校验：不允许空格，只允许数字、字母、符号
+        String passwordRegex = "^[A-Za-z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?~`]+$";
+        if (!request.getPassword().matches(passwordRegex)) {
+            return ApiResponse.error(400, "密码只能包含数字、字母和符号，不能包含空格");
+        }
+
+        // 3. 密码长度校验
+        if (request.getPassword().length() < 6) {
+            return ApiResponse.error(400, "密码长度至少6位");
+        }
+
+        // 4. 验证邮箱格式
         if (!isValidEmail(request.getEmail())) {
             return ApiResponse.error(400, "邮箱格式不正确");
         }
 
-        // 3. 验证验证码
+        // 5. 验证验证码
         if (!codeService.verifyCode(request.getEmail(), request.getCode())) {
             return ApiResponse.error(400, "验证码错误或已过期");
         }
 
-        // 4. 调用原有注册逻辑
+        // 6. 调用原有注册逻辑
         Map<String, Object> result = userService.register(request);
         boolean success = (Boolean) result.get("success");
 
@@ -166,6 +177,12 @@ public class UserController {
                 request.getCode() == null || request.getCode().isEmpty() ||
                 request.getNewPassword() == null || request.getNewPassword().isEmpty()) {
             return ApiResponse.error(400, "所有字段都不能为空");
+        }
+
+        //密码格式校验
+        String passwordRegex = "^[A-Za-z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?~`]+$";
+        if (!request.getNewPassword().matches(passwordRegex)) {
+            return ApiResponse.error(400, "密码只能包含数字、字母和符号，不能包含空格");
         }
 
         // 密码长度校验
@@ -326,6 +343,28 @@ public class UserController {
         Integer userId = getUserIdFromToken(req);
         if (userId == null) {
             return ApiResponse.error(401, "未登录");
+        }
+
+        // 1. 非空校验
+        if (request.getOldPassword() == null || request.getOldPassword().isEmpty() ||
+                request.getNewPassword() == null || request.getNewPassword().isEmpty()) {
+            return ApiResponse.error(400, "原密码和新密码都不能为空");
+        }
+
+        // 2. 新密码长度校验（至少6位）
+        if (request.getNewPassword().length() < 6) {
+            return ApiResponse.error(400, "新密码长度至少6位");
+        }
+
+        // 3. 新密码格式校验：不允许空格，只允许数字、字母、符号
+        String passwordRegex = "^[A-Za-z0-9!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?~`]+$";
+        if (!request.getNewPassword().matches(passwordRegex)) {
+            return ApiResponse.error(400, "新密码只能包含数字、字母和符号，不能包含空格");
+        }
+
+        // 4. 新旧密码不能相同
+        if (request.getOldPassword().equals(request.getNewPassword())) {
+            return ApiResponse.error(400, "新密码不能与旧密码相同");
         }
 
         Map<String, Object> result = userService.updatePassword(userId, request);
