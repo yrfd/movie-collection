@@ -24,6 +24,7 @@
         <result column="personal_rating" property="personalRating"/>
         <result column="watch_status" property="watchStatus"/>
         <result column="private_review" property="privateReview"/>
+        <result column="category_id" property="categoryId"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
         <result column="movie_name" property="movieName"/>
@@ -34,8 +35,13 @@
         <result column="region" property="region"/>
     </resultMap>
 
+    <!-- 基础查询 -->
     <select id="findMovieByName" resultMap="MoviePublicMap">
         SELECT * FROM movie_public WHERE movie_name = #{movieName}
+    </select>
+
+    <select id="findMovieByTmdbId" resultMap="MoviePublicMap">
+        SELECT * FROM movie_public WHERE tmdb_id = #{tmdbId}
     </select>
 
     <insert id="insertMovie" useGeneratedKeys="true" keyProperty="movieId">
@@ -49,10 +55,11 @@
         WHERE movie_id = #{movieId}
     </update>
 
+    <!-- 收藏查询 -->
     <select id="findCollectionsByUserId" resultMap="MovieCollectionMap">
         SELECT c.*, m.movie_name, m.director, m.year, m.poster_url, m.genre, m.region
         FROM movie_collection c
-        JOIN movie_public m ON c.movie_id = m.movie_id
+                 JOIN movie_public m ON c.movie_id = m.movie_id
         WHERE c.user_id = #{userId}
         ORDER BY c.create_time DESC
     </select>
@@ -60,7 +67,7 @@
     <select id="findCollectionById" resultMap="MovieCollectionMap">
         SELECT c.*, m.movie_name, m.director, m.year, m.poster_url, m.genre, m.region
         FROM movie_collection c
-        JOIN movie_public m ON c.movie_id = m.movie_id
+                 JOIN movie_public m ON c.movie_id = m.movie_id
         WHERE c.collection_id = #{collectionId}
     </select>
 
@@ -70,16 +77,16 @@
     </select>
 
     <insert id="insertCollection" useGeneratedKeys="true" keyProperty="collectionId">
-        INSERT INTO movie_collection (user_id, movie_id, personal_rating, watch_status, private_review)
-        VALUES (#{userId}, #{movieId}, #{personalRating}, #{watchStatus}, #{privateReview})
+        INSERT INTO movie_collection (user_id, movie_id, personal_rating, watch_status, private_review, category_id)
+        VALUES (#{userId}, #{movieId}, #{personalRating}, #{watchStatus}, #{privateReview}, #{categoryId})
     </insert>
 
     <update id="updateCollection">
         UPDATE movie_collection
         SET personal_rating = #{personalRating},
-        watch_status = #{watchStatus},
-        private_review = #{privateReview},
-        update_time = NOW()
+            watch_status = #{watchStatus},
+            private_review = #{privateReview},
+            update_time = NOW()
         WHERE collection_id = #{collectionId}
     </update>
 
@@ -87,6 +94,7 @@
         DELETE FROM movie_collection WHERE collection_id = #{collectionId}
     </delete>
 
+    <!-- 搜索筛选 - 修复类型筛选问题 -->
     <select id="searchCollections" resultMap="MovieCollectionMap">
         SELECT c.*, m.movie_name, m.director, m.year, m.poster_url, m.genre, m.region
         FROM movie_collection c
@@ -104,17 +112,17 @@
         <if test="region != null and region != ''">
             AND m.region = #{region}
         </if>
+        <!-- 修复：使用 FIND_IN_SET 匹配逗号分隔的类型 -->
         <if test="genre != null and genre != ''">
-            AND m.genre = #{genre}
+            AND FIND_IN_SET(#{genre}, REPLACE(m.genre, '、', ',')) > 0
+        </if>
+        <if test="categoryId != null">
+            AND c.category_id = #{categoryId}
         </if>
         ORDER BY c.create_time DESC
     </select>
 
-    <select id="findMovieByTmdbId" resultMap="MoviePublicMap">
-        SELECT * FROM movie_public WHERE tmdb_id = #{tmdbId}
-    </select>
-
-    <!-- 按综合评分排序的电影排行榜 -->
+    <!-- 排行榜 -->
     <select id="selectMoviesOrderByRating" resultType="java.util.HashMap">
         SELECT
             m.movie_id as movieId,
@@ -134,7 +142,6 @@
             LIMIT 50
     </select>
 
-    <!-- 按评论数排序的电影排行榜 -->
     <select id="selectMoviesOrderByCommentCount" resultType="java.util.HashMap">
         SELECT
             m.movie_id as movieId,
@@ -155,4 +162,16 @@
         ORDER BY commentCount DESC, m.avg_rating DESC
             LIMIT 50
     </select>
+
+    <!-- 批量移动收藏 -->
+    <update id="batchMoveToCategory">
+        UPDATE movie_collection
+        SET category_id = #{categoryId}
+        WHERE collection_id IN
+        <foreach collection="collectionIds" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+        AND user_id = #{userId}
+    </update>
+
 </mapper>

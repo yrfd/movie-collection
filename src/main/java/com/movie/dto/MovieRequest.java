@@ -14,4 +14,5 @@ public class MovieRequest {
     private String watchStatus;
     private String privateReview;
     private Integer tmdbId;
+    private Integer categoryId;  // 新增：分类ID
 }
