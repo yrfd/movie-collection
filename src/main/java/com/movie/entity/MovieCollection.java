@@ -11,6 +11,7 @@ public class MovieCollection {
     private Double personalRating;
     private String watchStatus;
     private String privateReview;
+    private Integer categoryId;  // 新增：分类ID
     private Date createTime;
     private Date updateTime;
 

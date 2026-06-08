@@ -1,7 +1,9 @@
 package com.movie.controller;
 
 import com.movie.dto.ApiResponse;
+import com.movie.dto.CategoryRequest;
 import com.movie.dto.MovieRequest;
+import com.movie.entity.MovieCategory;
 import com.movie.entity.MovieCollection;
 import com.movie.service.MovieService;
 import com.movie.util.JwtUtil;
@@ -32,6 +34,8 @@ public class MovieController {
         return null;
     }
 
+    // ========== 收藏管理接口 ==========
+
     @GetMapping("/list")
     public ApiResponse<?> getMovieList(HttpServletRequest request) {
         Integer userId = getUserIdFromToken(request);
@@ -53,7 +57,6 @@ public class MovieController {
         if (success) {
             String message = (String) result.get("message");
             Object collectionId = result.get("collectionId");
-            // 包装返回值
             Map<String, Object> data = new HashMap<>();
             data.put("collectionId", collectionId);
             return ApiResponse.success(message, data);
@@ -67,8 +70,7 @@ public class MovieController {
         Map<String, Object> result = movieService.updateCollection(collectionId, request);
         boolean success = (Boolean) result.get("success");
         if (success) {
-            String message = (String) result.get("message");
-            return ApiResponse.success(message);
+            return ApiResponse.success((String) result.get("message"));
         }
         return ApiResponse.error(400, (String) result.get("message"));
     }
@@ -76,8 +78,7 @@ public class MovieController {
     @DeleteMapping("/delete/{collectionId}")
     public ApiResponse<?> deleteMovie(@PathVariable Integer collectionId) {
         Map<String, Object> result = movieService.deleteCollection(collectionId);
-        String message = (String) result.get("message");
-        return ApiResponse.success(message);
+        return ApiResponse.success((String) result.get("message"));
     }
 
     @GetMapping("/search")
@@ -86,30 +87,103 @@ public class MovieController {
                                        @RequestParam(required = false) Double minRating,
                                        @RequestParam(required = false) String region,
                                        @RequestParam(required = false) String genre,
+                                       @RequestParam(required = false) Integer categoryId,
                                        HttpServletRequest request) {
         Integer userId = getUserIdFromToken(request);
         if (userId == null) {
             return ApiResponse.error(401, "未登录");
         }
-        List<MovieCollection> movies = movieService.searchMovies(userId, keyword, director, minRating, region, genre);
+        List<MovieCollection> movies = movieService.searchMovies(userId, keyword, director, minRating, region, genre, categoryId);
         return ApiResponse.success(movies);
     }
-    /**
-     * 获取电影排行榜
-     * @param type 排行榜类型: rating(按评分排行), popular(按评论数排行)
-     */
+
+    // ========== 排行榜接口 ==========
+
     @GetMapping("/rankings")
     public ApiResponse<?> getMovieRankings(@RequestParam String type) {
         List<Map<String, Object>> rankings;
-
         if ("popular".equals(type)) {
-            // 按评论数排行
             rankings = movieService.getMoviesOrderByCommentCount();
         } else {
-            // 按评分排行（默认）
             rankings = movieService.getMoviesOrderByRating();
         }
-
         return ApiResponse.success(rankings);
+    }
+
+    // ========== 分类管理接口 ==========
+
+    @GetMapping("/categories")
+    public ApiResponse<?> getCategories(HttpServletRequest request) {
+        Integer userId = getUserIdFromToken(request);
+        if (userId == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        List<MovieCategory> categories = movieService.getUserCategories(userId);
+        return ApiResponse.success(categories);
+    }
+
+    @PostMapping("/categories")
+    public ApiResponse<?> createCategory(@RequestBody CategoryRequest request, HttpServletRequest req) {
+        Integer userId = getUserIdFromToken(req);
+        if (userId == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        Map<String, Object> result = movieService.createCategory(userId, request);
+        boolean success = (Boolean) result.get("success");
+        if (success) {
+            return ApiResponse.success((String) result.get("message"));
+        }
+        return ApiResponse.error(400, (String) result.get("message"));
+    }
+
+    @DeleteMapping("/categories/{categoryId}")
+    public ApiResponse<?> deleteCategory(@PathVariable Integer categoryId, HttpServletRequest request) {
+        Integer userId = getUserIdFromToken(request);
+        if (userId == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        Map<String, Object> result = movieService.deleteCategory(userId, categoryId);
+        boolean success = (Boolean) result.get("success");
+        if (success) {
+            return ApiResponse.success((String) result.get("message"));
+        }
+        return ApiResponse.error(400, (String) result.get("message"));
+    }
+
+    @PutMapping("/collections/{collectionId}/move-to/{categoryId}")
+    public ApiResponse<?> moveToCategory(@PathVariable Integer collectionId,
+                                         @PathVariable Integer categoryId) {
+        Map<String, Object> result = movieService.moveToCategory(collectionId, categoryId);
+        boolean success = (Boolean) result.get("success");
+        if (success) {
+            return ApiResponse.success((String) result.get("message"));
+        }
+        return ApiResponse.error(400, (String) result.get("message"));
+    }
+
+    @PostMapping("/collections/batch-move-to/{categoryId}")
+    public ApiResponse<?> batchMoveToCategory(@RequestBody List<Integer> collectionIds,
+                                              @PathVariable Integer categoryId,
+                                              HttpServletRequest request) {
+        Integer userId = getUserIdFromToken(request);
+        if (userId == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        Map<String, Object> result = movieService.batchMoveToCategory(userId, collectionIds, categoryId);
+        boolean success = (Boolean) result.get("success");
+        if (success) {
+            return ApiResponse.success((String) result.get("message"));
+        }
+        return ApiResponse.error(400, (String) result.get("message"));
+    }
+
+    @GetMapping("/collections/by-category/{categoryId}")
+    public ApiResponse<?> getCollectionsByCategory(@PathVariable Integer categoryId, HttpServletRequest request) {
+        Integer userId = getUserIdFromToken(request);
+        if (userId == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        List<MovieCollection> movies = movieService.getCollectionsByCategory(userId, categoryId);
+        return ApiResponse.success(movies);
     }
 }
