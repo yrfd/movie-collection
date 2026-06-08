@@ -1,12 +1,15 @@
 package com.movie.service;
 
 import com.movie.dto.*;
+import com.movie.entity.MovieCategory;
 import com.movie.entity.User;
+import com.movie.mapper.MovieMapper;
 import com.movie.mapper.UserMapper;
 import com.movie.util.JwtUtil;
 import com.movie.util.MD5Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -18,25 +21,35 @@ public class UserService {
     private UserMapper userMapper;
 
     @Autowired
+    private MovieMapper movieMapper;  // 新增：注入 MovieMapper 用于创建分类
+
+    @Autowired
     private VerificationCodeService codeService;
 
+    /**
+     * 用户注册 - 同时创建默认分类
+     */
+    @Transactional  // 添加事务注解，确保用户创建和分类创建要么都成功，要么都失败
     public Map<String, Object> register(RegisterRequest request) {
         Map<String, Object> result = new HashMap<>();
 
+        // 检查用户名是否已存在
         if (userMapper.findByUsername(request.getUsername()) != null) {
             result.put("success", false);
             result.put("message", "用户名已存在");
             return result;
         }
 
+        // 检查邮箱是否已被注册
         User existingUserByEmail = userMapper.findByEmail(request.getEmail());
         if (userMapper.findByEmail(request.getEmail()) != null) {
             result.put("success", false);
             result.put("message", "该邮箱已被注册，用户名为：" + existingUserByEmail.getUsername() + "，\n请使用其他邮箱注册或者使用该账号进行登录");
-            result.put("existingUsername", existingUserByEmail.getUsername());  // 额外返回用户名
+            result.put("existingUsername", existingUserByEmail.getUsername());
             return result;
         }
 
+        // 创建新用户
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(MD5Util.md5(request.getPassword()));
@@ -44,12 +57,40 @@ public class UserService {
 
         userMapper.insert(user);
 
+        // ========== 新增：为用户创建默认分类 ==========
+        createDefaultCategories(user.getUserId());
+
         result.put("success", true);
         result.put("message", "注册成功");
         result.put("userId", user.getUserId());
         return result;
     }
 
+    /**
+     * 为用户创建默认分类
+     * @param userId 用户ID
+     */
+    private void createDefaultCategories(Integer userId) {
+        // 方式一：创建一个默认分类
+        MovieCategory defaultCategory = new MovieCategory();
+        defaultCategory.setUserId(userId);
+        defaultCategory.setCategoryName("默认收藏");
+        movieMapper.insertCategory(defaultCategory);
+
+        // 方式二：创建多个默认分类（可选，根据需要决定是否启用）
+        // 如果想要多个默认分类，取消下面的注释
+        /*
+        String[] defaultCategories = {"想看清单", "已看过", "我的最爱"};
+        for (String categoryName : defaultCategories) {
+            MovieCategory category = new MovieCategory();
+            category.setUserId(userId);
+            category.setCategoryName(categoryName);
+            movieMapper.insertCategory(category);
+        }
+        */
+    }
+
+    // 其他方法保持不变...
     public Map<String, Object> login(LoginRequest request) {
         Map<String, Object> result = new HashMap<>();
 
@@ -68,7 +109,6 @@ public class UserService {
 
         String token = JwtUtil.generateToken(user.getUserId(), user.getUsername());
 
-        // Java 9+ 可以使用 Map.of()
         Map<String, Object> userInfo = Map.of(
                 "userId", user.getUserId(),
                 "username", user.getUsername(),
@@ -274,6 +314,4 @@ public class UserService {
 
         return result;
     }
-
-
 }
