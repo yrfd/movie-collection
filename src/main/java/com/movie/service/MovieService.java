@@ -2,7 +2,9 @@ package com.movie.service;
 
 import com.movie.dto.CategoryRequest;
 import com.movie.dto.MovieRequest;
+import com.movie.dto.PrivateReviewRequest;  // ✅ 新增导入
 import com.movie.entity.MovieCategory;
+import com.movie.dto.PrivateReviewRequest;
 import com.movie.entity.MovieCollection;
 import com.movie.entity.MoviePublic;
 import com.movie.mapper.MovieMapper;
@@ -57,6 +59,7 @@ public class MovieService {
         return movieMapper.findCollectionsByUserId(userId);
     }
 
+    // 添加电影收藏
     @Transactional
     public Map<String, Object> addCollection(Integer userId, MovieRequest request) {
         Map<String, Object> result = new HashMap<>();
@@ -100,6 +103,7 @@ public class MovieService {
         return result;
     }
 
+    // 更新电影收藏
     public Map<String, Object> updateCollection(Integer collectionId, MovieRequest request) {
         Map<String, Object> result = new HashMap<>();
 
@@ -121,6 +125,7 @@ public class MovieService {
         return result;
     }
 
+    // 删除电影收藏
     public Map<String, Object> deleteCollection(Integer collectionId) {
         Map<String, Object> result = new HashMap<>();
         movieMapper.deleteCollection(collectionId);
@@ -138,13 +143,16 @@ public class MovieService {
         return movieMapper.searchCollections(userId, keyword, director, minRating, englishRegion,
                 genre, categoryId, watchStatus, minYear, maxYear, sortBy);
     }
-
-    // ========== 排行榜 ==========
-
+    /**
+     * 获取按评分排序的电影排行榜
+     */
     public List<Map<String, Object>> getMoviesOrderByRating() {
         return movieMapper.selectMoviesOrderByRating();
     }
 
+    /**
+     * 获取按评论数排序的电影排行榜
+     */
     public List<Map<String, Object>> getMoviesOrderByCommentCount() {
         return movieMapper.selectMoviesOrderByCommentCount();
     }
@@ -238,5 +246,41 @@ public class MovieService {
     public List<MovieCollection> getCollectionsByCategory(Integer userId, Integer categoryId) {
         return movieMapper.searchCollections(userId, null, null, null, null, null,
                 categoryId, null, null, null, null);
+    }
+
+    // ========== 私人评价管理 ==========
+    /**
+     * 更新私人评价
+     * @param userId 用户ID
+     * @param request 私人评价请求（包含tmdbId和私人评价内容）
+     * @return 操作结果
+     */
+    @Transactional
+    public Map<String, Object> updatePrivateReview(Integer userId, PrivateReviewRequest request) {
+        Map<String, Object> result = new HashMap<>();
+
+        // 1. 根据TMDB ID查找电影
+        MoviePublic movie = movieMapper.findMovieByTmdbId(request.getTmdbId());
+        if (movie == null) {
+            result.put("success", false);
+            result.put("message", "电影不存在");
+            return result;
+        }
+
+        // 2. 查找用户的收藏记录
+        MovieCollection collection = movieMapper.findCollectionByUserAndMovie(userId, movie.getMovieId());
+        if (collection == null) {
+            result.put("success", false);
+            result.put("message", "请先收藏该电影");
+            return result;
+        }
+
+        // 3. 更新私人评价
+        collection.setPrivateReview(request.getPrivateReview());
+        movieMapper.updateCollection(collection);
+
+        result.put("success", true);
+        result.put("message", "私人评价更新成功");
+        return result;
     }
 }

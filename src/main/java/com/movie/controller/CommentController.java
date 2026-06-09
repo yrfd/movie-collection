@@ -80,6 +80,7 @@ public class CommentController {
             Object commentId = result.get("commentId");
             Map<String, Object> data = new HashMap<>();
             data.put("commentId", commentId);
+            data.put("rating", result.get("rating"));
             return ApiResponse.success(message, data);
         }
         return ApiResponse.error(400, (String) result.get("message"));

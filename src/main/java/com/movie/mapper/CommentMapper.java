@@ -20,4 +20,7 @@ public interface CommentMapper {
     List<Comment> findCommentsByTmdbId(@Param("tmdbId") Integer tmdbId);
     Double getAverageRatingByTmdbId(@Param("tmdbId") Integer tmdbId);
     Integer getRatingCountByTmdbId(@Param("tmdbId") Integer tmdbId);
+
+    // 根据用户ID和电影ID查找公开评价（用于ReviewService）
+    Comment findCommentByUserAndMovie(@Param("userId") Integer userId, @Param("movieId") Integer movieId);
 }
