@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理员登录 - 银幕记忆</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .admin-login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #ffffff 0%, #ffffff 100%);
+        }
+        .admin-login-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-xl);
+            width: 100%;
+            max-width: 400px;
+            padding: 40px;
+        }
+        .admin-icon {
+            text-align: center;
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+        .error-message {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 12px;
+            border-radius: var(--radius-md);
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="admin-login-page">
+    <div class="admin-login-card">
+
+        <h2 style="text-align: center; margin-bottom: 24px;">管理员登录</h2>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label class="form-label">管理员密钥</label>
+                <input type="password" id="secret" class="form-input" placeholder="请输入管理员密钥" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">登录</button>
+        </form>
+
+        <div style="text-align: center; margin-top: 20px;">
+            <a href="index.html">返回首页</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE_URL = window.location.origin;
+
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const secret = document.getElementById('secret').value;
+        const errorDiv = document.getElementById('errorMessage');
+
+        if (!secret) {
+            errorDiv.textContent = '请输入管理员密钥';
+            errorDiv.style.display = 'block';
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ secret })
+            });
+            const result = await response.json();
+
+            if (result.code === 200) {
+                window.location.href = 'admin-dashboard.html';
+            } else {
+                errorDiv.textContent = result.message || '密钥错误';
+                errorDiv.style.display = 'block';
+            }
+        } catch (error) {
+            errorDiv.textContent = '网络错误，请稍后重试';
+            errorDiv.style.display = 'block';
+        }
+    });
+</script>
+</body>
+</html>

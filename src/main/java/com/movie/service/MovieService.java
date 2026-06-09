@@ -130,10 +130,13 @@ public class MovieService {
     }
 
     public List<MovieCollection> searchMovies(Integer userId, String keyword, String director,
-                                              Double minRating, String region, String genre, Integer categoryId) {
+                                              Double minRating, String region, String genre,
+                                              Integer categoryId, String watchStatus,
+                                              Integer minYear, Integer maxYear, String sortBy) {
         // 转换地区为英文
         String englishRegion = convertRegionToEnglish(region);
-        return movieMapper.searchCollections(userId, keyword, director, minRating, englishRegion, genre, categoryId);
+        return movieMapper.searchCollections(userId, keyword, director, minRating, englishRegion,
+                genre, categoryId, watchStatus, minYear, maxYear, sortBy);
     }
 
     // ========== 排行榜 ==========
@@ -233,6 +236,7 @@ public class MovieService {
     }
 
     public List<MovieCollection> getCollectionsByCategory(Integer userId, Integer categoryId) {
-        return movieMapper.searchCollections(userId, null, null, null, null, null, categoryId);
+        return movieMapper.searchCollections(userId, null, null, null, null, null,
+                categoryId, null, null, null, null);
     }
 }

@@ -34,7 +34,12 @@ public interface MovieMapper {
                                             @Param("minRating") Double minRating,
                                             @Param("region") String region,
                                             @Param("genre") String genre,
-                                            @Param("categoryId") Integer categoryId);
+                                            @Param("categoryId") Integer categoryId,
+                                            @Param("watchStatus") String watchStatus,
+                                            @Param("minYear") Integer minYear,
+                                            @Param("maxYear") Integer maxYear,
+                                            @Param("sortBy") String sortBy);
+
 
     MoviePublic findMovieByTmdbId(@Param("tmdbId") Integer tmdbId);
 

@@ -101,6 +101,12 @@ public class UserService {
             return result;
         }
 
+        if (user.getStatus() != null && user.getStatus() == 0) {
+            result.put("success", false);
+            result.put("message", "账号已被禁用，请联系管理员");
+            return result;
+        }
+
         if (!user.getPassword().equals(MD5Util.md5(request.getPassword()))) {
             result.put("success", false);
             result.put("message", "密码错误");

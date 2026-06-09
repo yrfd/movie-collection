@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.movie.mapper.AdminMapper">
+
+    <!-- ========== 用户管理 ========== -->
+
+    <select id="getAllUsers" resultType="com.movie.dto.AdminUserInfo">
+        SELECT
+            u.user_id as userId,
+            u.username,
+            u.email,
+            u.create_time as createTime,
+            (SELECT COUNT(*) FROM movie_collection c WHERE c.user_id = u.user_id) as movieCount,
+            (SELECT COUNT(*) FROM movie_comment c WHERE c.user_id = u.user_id) as commentCount
+        FROM user u
+        ORDER BY u.user_id DESC
+    </select>
+
+    <update id="disableUser">
+        UPDATE user SET status = 0 WHERE user_id = #{userId}
+    </update>
+
+    <update id="enableUser">
+        UPDATE user SET status = 1 WHERE user_id = #{userId}
+    </update>
+
+    <delete id="deleteUser">
+        DELETE FROM user WHERE user_id = #{userId}
+    </delete>
+
+    <select id="checkUserExists" resultType="int">
+        SELECT COUNT(*) FROM user WHERE user_id = #{userId}
+    </select>
+
+    <!-- ========== 电影管理 ========== -->
+
+    <select id="getAllMoviesForAdmin" resultType="com.movie.dto.AdminMovieInfo">
+        SELECT
+            m.movie_id as movieId,
+            m.movie_name as movieName,
+            m.director,
+            m.year,
+            m.genre,
+            m.region,
+            m.avg_rating as avgRating,
+            m.rating_count as ratingCount,
+            (SELECT COUNT(*) FROM movie_comment c WHERE c.movie_id = m.movie_id) as commentCount,
+            (SELECT COUNT(*) FROM movie_collection c WHERE c.movie_id = m.movie_id) as collectionCount
+        FROM movie_public m
+        ORDER BY m.movie_id DESC
+    </select>
+
+    <delete id="deleteMovie">
+        DELETE FROM movie_public WHERE movie_id = #{movieId}
+    </delete>
+
+    <delete id="deleteMovieCollections">
+        DELETE FROM movie_collection WHERE movie_id = #{movieId}
+    </delete>
+
+    <delete id="deleteMovieComments">
+        DELETE FROM movie_comment WHERE movie_id = #{movieId}
+    </delete>
+
+    <!-- ========== 评论管理 ========== -->
+
+    <select id="getAllComments" resultType="com.movie.dto.AdminCommentInfo">
+        SELECT
+            c.comment_id as commentId,
+            u.username,
+            m.movie_name as movieName,
+            c.rating,
+            c.content,
+            c.create_time as createTime
+        FROM movie_comment c
+                 JOIN user u ON c.user_id = u.user_id
+                 JOIN movie_public m ON c.movie_id = m.movie_id
+        ORDER BY c.create_time DESC
+    </select>
+
+    <delete id="deleteComment">
+        DELETE FROM movie_comment WHERE comment_id = #{commentId}
+    </delete>
+
+    <!-- ========== 数据统计 ========== -->
+
+    <select id="getSystemStats" resultType="java.util.HashMap">
+        SELECT
+                (SELECT COUNT(*) FROM user) as userCount,
+                (SELECT COUNT(*) FROM movie_public) as movieCount,
+                (SELECT COUNT(*) FROM movie_comment) as commentCount,
+                (SELECT COUNT(*) FROM movie_collection) as collectionCount,
+                (SELECT COUNT(*) FROM user WHERE DATE(create_time) = CURDATE()) as todayNewUsers,
+            (SELECT COUNT(*) FROM movie_comment WHERE DATE(create_time) = CURDATE()) as todayNewComments
+    </select>
+
+    <select id="getLast7DaysNewUsers" resultType="java.util.HashMap">
+        SELECT
+            DATE(create_time) as date,
+            COUNT(*) as count
+        FROM user
+        WHERE create_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY DATE(create_time)
+        ORDER BY date ASC
+    </select>
+
+    <select id="getLast7DaysNewComments" resultType="java.util.HashMap">
+        SELECT
+            DATE(create_time) as date,
+            COUNT(*) as count
+        FROM movie_comment
+        WHERE create_time >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY DATE(create_time)
+        ORDER BY date ASC
+    </select>
+
+</mapper>

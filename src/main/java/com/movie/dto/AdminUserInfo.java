@@ -1,16 +1,14 @@
-package com.movie.entity;
+package com.movie.dto;
 
 import lombok.Data;
 import java.util.Date;
 
 @Data
-public class User {
+public class AdminUserInfo {
     private Integer userId;
     private String username;
-    private String password;
     private String email;
-    private String avatar;
-    private Integer status;
     private Date createTime;
-    private Date updateTime;
+    private Integer movieCount;
+    private Integer commentCount;
 }
