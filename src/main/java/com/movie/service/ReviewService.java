@@ -3,6 +3,7 @@ package com.movie.service;
 import com.movie.dto.MyReviewDTO;
 import com.movie.entity.Comment;
 import com.movie.entity.MovieCollection;
+import com.movie.entity.MoviePublic;
 import com.movie.mapper.CommentMapper;
 import com.movie.mapper.MovieMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,18 +29,20 @@ public class ReviewService {
     public List<MyReviewDTO> getAllMyReviews(Integer userId, String type) {
         List<MyReviewDTO> reviews = new ArrayList<>();
 
-        // 获取用户的收藏（包含私人评价）
+        // 获取用户所有收藏
         List<MovieCollection> collections = movieMapper.findCollectionsByUserId(userId);
 
-        // 获取用户的公开评价
-        List<Comment> publicComments = commentMapper.findCommentsByUserId(userId);
-        Map<Integer, Comment> publicCommentMap = publicComments.stream()
-                .collect(Collectors.toMap(Comment::getMovieId, c -> c, (a, b) -> a));
+        // 获取用户所有公开评价（按电影分组）
+        List<Comment> allComments = commentMapper.findCommentsByUserId(userId);
+        Map<Integer, List<Comment>> commentsByMovie = allComments.stream()
+                .collect(Collectors.groupingBy(Comment::getMovieId));
 
         for (MovieCollection collection : collections) {
             MyReviewDTO dto = new MyReviewDTO();
             dto.setCollectionId(collection.getCollectionId());
             dto.setMovieId(collection.getMovieId());
+            Integer tmdbId = getTmdbIdByMovieId(collection.getMovieId());
+            dto.setTmdbId(tmdbId);
             dto.setMovieName(collection.getMovieName());
             dto.setPosterUrl(collection.getPosterUrl());
             dto.setPersonalRating(collection.getPersonalRating());
@@ -47,18 +50,12 @@ public class ReviewService {
             dto.setPrivateReview(collection.getPrivateReview());
             dto.setReviewTime(collection.getUpdateTime());
 
-            // 获取公开评价
-            Comment publicComment = publicCommentMap.get(collection.getMovieId());
-            if (publicComment != null) {
-                dto.setPublicReview(publicComment.getContent());
-                dto.setPublicRating(publicComment.getRating());
-                dto.setCommentId(publicComment.getCommentId());
-            }
-
-            // 判断评价类型
+            // ✅ 获取该电影的所有公开评价
+            List<Comment> movieComments = commentsByMovie.get(collection.getMovieId());
+            boolean hasPublic = movieComments != null && !movieComments.isEmpty();
             boolean hasPrivate = dto.getPrivateReview() != null && !dto.getPrivateReview().isEmpty();
-            boolean hasPublic = dto.getPublicReview() != null && !dto.getPublicReview().isEmpty();
 
+            // 设置评价类型
             if (hasPrivate && hasPublic) {
                 dto.setReviewType("BOTH");
             } else if (hasPrivate) {
@@ -69,10 +66,47 @@ public class ReviewService {
                 dto.setReviewType("NONE");
             }
 
+            // ✅ 构建公开评价列表
+            if (hasPublic) {
+                List<MyReviewDTO.PublicReviewInfo> publicReviews = new ArrayList<>();
+                for (Comment comment : movieComments) {
+                    MyReviewDTO.PublicReviewInfo info = new MyReviewDTO.PublicReviewInfo();
+                    info.setCommentId(comment.getCommentId());
+                    info.setContent(comment.getContent());
+                    info.setCreateTime(comment.getCreateTime());
+                    info.setUpdateTime(comment.getUpdateTime());
+                    info.setIsEdited(comment.getIsEdited());
+                    // 评分使用收藏评分（动态）
+                    info.setRating(collection.getPersonalRating());
+                    publicReviews.add(info);
+                }
+                // 按创建时间倒序排列（最新的在前）
+                publicReviews.sort((a, b) -> {
+                    if (a.getCreateTime() == null && b.getCreateTime() == null) return 0;
+                    if (a.getCreateTime() == null) return 1;
+                    if (b.getCreateTime() == null) return -1;
+                    return b.getCreateTime().compareTo(a.getCreateTime());
+                });
+                dto.setPublicReviews(publicReviews);
+            }
+
             // 根据类型筛选
-            if ("private".equals(type) && !hasPrivate) continue;
-            if ("public".equals(type) && !hasPublic) continue;
-            if ("both".equals(type) && !(hasPrivate && hasPublic)) continue;
+            switch (type) {
+                case "private":
+                    if (!hasPrivate) continue;
+                    break;
+                case "public":
+                    if (!hasPublic) continue;
+                    break;
+                case "both":
+                    if (!(hasPrivate && hasPublic)) continue;
+                    break;
+                case "all":
+                    if (!hasPrivate && !hasPublic) continue;
+                    break;
+                default:
+                    if (!hasPrivate && !hasPublic) continue;
+            }
 
             reviews.add(dto);
         }
@@ -131,5 +165,10 @@ public class ReviewService {
         stats.put("onlyPublicCount", publicCount - bothCount);
 
         return stats;
+    }
+
+    private Integer getTmdbIdByMovieId(Integer movieId) {
+        MoviePublic movie = movieMapper.findMovieById(movieId);
+        return movie != null ? movie.getTmdbId() : null;
     }
 }

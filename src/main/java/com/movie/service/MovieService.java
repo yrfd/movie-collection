@@ -7,6 +7,7 @@ import com.movie.entity.MovieCategory;
 import com.movie.dto.PrivateReviewRequest;
 import com.movie.entity.MovieCollection;
 import com.movie.entity.MoviePublic;
+import com.movie.mapper.CommentMapper;
 import com.movie.mapper.MovieMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -15,11 +16,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
 @Service
 public class MovieService {
 
     @Autowired
     private MovieMapper movieMapper;
+    @Autowired
+    private CommentMapper commentMapper;
+    @Autowired
+    private CommentService commentService;
 
     // 地区映射（解决中英文匹配问题）
     private static final Map<String, String> REGION_MAP = new HashMap<>();
@@ -113,6 +119,8 @@ public class MovieService {
             result.put("message", "收藏记录不存在");
             return result;
         }
+        Double oldRating = collection.getPersonalRating();
+        Double newRating = request.getPersonalRating();
 
         collection.setPersonalRating(request.getPersonalRating());
         collection.setWatchStatus(request.getWatchStatus());
@@ -120,6 +128,16 @@ public class MovieService {
 
         movieMapper.updateCollection(collection);
 
+        if (oldRating != null && newRating != null && !oldRating.equals(newRating)) {
+            // 更新该用户对该电影的评论评分
+            commentMapper.updateCommentRatingByUserAndMovie(
+                    collection.getUserId(),
+                    collection.getMovieId(),
+                    newRating
+            );
+            // 重新计算电影综合评分
+            commentService.updateMovieRating(collection.getMovieId());
+        }
         result.put("success", true);
         result.put("message", "更新成功");
         return result;

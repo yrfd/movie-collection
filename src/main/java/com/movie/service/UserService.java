@@ -118,7 +118,8 @@ public class UserService {
         Map<String, Object> userInfo = Map.of(
                 "userId", user.getUserId(),
                 "username", user.getUsername(),
-                "email", user.getEmail()
+                "email", user.getEmail(),
+                "createTime", user.getCreateTime()
         );
 
         Map<String, Object> data = Map.of(

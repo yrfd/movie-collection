@@ -453,92 +453,61 @@
 </div>
 
 <!-- 添加/编辑电影模态框 -->
+<!-- 编辑电影模态框（修改版：电影信息只读，只允许编辑个人内容） -->
 <div id="movieModal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
-      <h3 class="modal-title" id="modalTitle">添加电影</h3>
+      <h3 class="modal-title" id="modalTitle">编辑电影</h3>
       <button class="modal-close" id="closeModalBtn">&times;</button>
     </div>
     <div class="modal-body">
       <form id="movieForm">
         <input type="hidden" id="editCollectionId">
 
-        <div class="tabs">
-          <button type="button" class="tab-btn active" data-tab="manual">手动录入</button>
-          <button type="button" class="tab-btn" data-tab="api">API拉取</button>
-        </div>
-
-        <!-- 手动录入 -->
-        <div id="manualTab" class="tab-pane active">
-          <div class="form-group">
-            <label class="form-label">电影名称 *</label>
-            <input type="text" id="movieName" class="form-input" placeholder="请输入电影名称">
-          </div>
-          <div class="form-group">
-            <label class="form-label">导演/演员</label>
-            <input type="text" id="director" class="form-input" placeholder="请输入导演和演员姓名">
-          </div>
-          <div class="form-group">
-            <label class="form-label">上映年份</label>
-            <input type="number" id="year" class="form-input" placeholder="四位数字，如1994">
-          </div>
-          <div class="form-group">
-            <label class="form-label">地区</label>
-            <input type="text" id="region" class="form-input" placeholder="如：美国、中国">
-          </div>
-          <div class="form-group">
-            <label class="form-label">类型</label>
-            <input type="text" id="genre" class="form-input" placeholder="如：动作、喜剧">
-          </div>
-          <div class="form-group">
-            <label class="form-label">海报链接</label>
-            <input type="url" id="posterUrl" class="form-input" placeholder="请输入海报图片URL">
-          </div>
-        </div>
-
-        <!-- API拉取 -->
-        <div id="apiTab" class="tab-pane">
-          <div class="form-group">
-            <label class="form-label">搜索电影</label>
-            <div style="display: flex; gap: 12px;">
-              <input type="text" id="apiSearchKeyword" class="form-input" placeholder="输入电影名称">
-              <button type="button" class="btn btn-primary" id="searchTMDBBtn">搜索</button>
+        <!-- 电影基本信息区域（只读显示） -->
+        <div class="movie-info-display" style="background: var(--gray-100); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
+          <div style="display: flex; gap: 16px; flex-wrap: wrap;">
+            <!-- 海报缩略图 -->
+            <img id="displayPoster" src="" alt="电影海报" style="width: 80px; height: 120px; object-fit: cover; border-radius: var(--radius-sm);">
+            <div style="flex: 1;">
+              <h4 id="displayMovieName" style="margin: 0 0 8px 0; color: var(--primary);"></h4>
+              <p style="margin: 4px 0; font-size: 0.875rem;"><strong>导演：</strong><span id="displayDirector"></span></p>
+              <p style="margin: 4px 0; font-size: 0.875rem;"><strong>年份：</strong><span id="displayYear"></span></p>
+              <p style="margin: 4px 0; font-size: 0.875rem;"><strong>地区：</strong><span id="displayRegion"></span></p>
+              <p style="margin: 4px 0; font-size: 0.875rem;"><strong>类型：</strong><span id="displayGenre"></span></p>
             </div>
           </div>
-          <div id="tmdbResults" style="max-height: 300px; overflow-y: auto;"></div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">所属文件夹</label>
-          <select id="categoryId" class="form-select">
-            <option value="">默认收藏</option>
-          </select>
-        </div>
+        <!-- 用户可编辑的个人信息区域 -->
+        <div class="user-edit-area">
+          <h4 style="margin-bottom: 16px; font-size: 1rem;">我的记录</h4>
 
-        <div class="form-group">
-          <label class="form-label">个人评分</label>
-          <div id="ratingStars"></div>
-          <input type="hidden" id="personalRating" value="0">
-        </div>
+          <div class="form-group">
+            <label class="form-label">我的评分</label>
+            <div id="ratingStars"></div>
+            <input type="hidden" id="personalRating" value="0">
+          </div>
 
-        <div class="form-group">
-          <label class="form-label">观影状态</label>
-          <select id="watchStatus" class="form-select">
-            <option value="想看">想看</option>
-            <option value="已看">已看</option>
-            <option value="不感兴趣">不感兴趣</option>
-          </select>
-        </div>
+          <div class="form-group">
+            <label class="form-label">观影状态</label>
+            <select id="watchStatus" class="form-select">
+              <option value="想看">想看</option>
+              <option value="已看">已看</option>
+              <option value="不感兴趣">不感兴趣</option>
+            </select>
+          </div>
 
-        <div class="form-group">
-          <label class="form-label">私人影评</label>
-          <textarea id="privateReview" class="form-textarea" placeholder="写下你的私人观影感受（仅自己可见）"></textarea>
+          <div class="form-group">
+            <label class="form-label">私人笔记 <span style="font-size: 0.75rem; color: var(--gray-500);">（仅自己可见）</span></label>
+            <textarea id="privateReview" class="form-textarea" placeholder="写下你的私人观影感受..." rows="4"></textarea>
+          </div>
         </div>
       </form>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" id="cancelModalBtn">取消</button>
-      <button class="btn btn-primary" id="saveMovieBtn">保存</button>
+      <button class="btn btn-primary" id="saveMovieBtn">保存修改</button>
     </div>
   </div>
 </div>
@@ -1412,21 +1381,47 @@
     const movie = currentMovies.find(m => m.collectionId === collectionId);
     if (!movie) return;
 
-    document.getElementById('modalTitle').textContent = '编辑电影';
+    // 设置模态框标题
+    document.getElementById('modalTitle').textContent = '编辑电影记录';
+
+    // 存储当前编辑的收藏ID
     document.getElementById('editCollectionId').value = movie.collectionId;
-    document.getElementById('movieName').value = movie.movieName || '';
-    document.getElementById('director').value = movie.director || '';
-    document.getElementById('year').value = movie.year || '';
-    document.getElementById('region').value = movie.region || '';
-    document.getElementById('genre').value = movie.genre || '';
-    document.getElementById('posterUrl').value = movie.posterUrl || '';
+
+    // ========== 显示电影基本信息（只读） ==========
+    // 海报
+    const displayPoster = document.getElementById('displayPoster');
+    displayPoster.src = movie.posterUrl || 'https://via.placeholder.com/80x120?text=No+Poster';
+    displayPoster.onerror = function() {
+      this.src = 'https://via.placeholder.com/80x120?text=No+Poster';
+    };
+
+    // 电影名称
+    document.getElementById('displayMovieName').textContent = movie.movieName || '未知';
+
+    // 导演
+    document.getElementById('displayDirector').textContent = movie.director || '未知';
+
+    // 年份
+    document.getElementById('displayYear').textContent = movie.year || '未知';
+
+    // 地区
+    document.getElementById('displayRegion').textContent = movie.region || '未知';
+
+    // 类型
+    document.getElementById('displayGenre').textContent = movie.genre || '未知';
+
+    // ========== 设置用户可编辑的个人信息 ==========
+    // 观影状态
     document.getElementById('watchStatus').value = movie.watchStatus || '想看';
+
+    // 私人笔记
     document.getElementById('privateReview').value = movie.privateReview || '';
+
+    // 个人评分（星星组件）
     currentRating = movie.personalRating || 0;
-    updateRatingStarsDisplay();
-    loadCategoryOptions().then(() => {
-      document.getElementById('categoryId').value = movie.categoryId || '';
-    });
+    updateRatingStarsDisplay();  // 更新星星显示
+
+    // 显示模态框
     document.getElementById('movieModal').classList.add('show');
   }
 
@@ -1436,41 +1431,32 @@
 
   async function saveMovie() {
     const collectionId = document.getElementById('editCollectionId').value;
+
+    // 只提交用户可修改的字段
     const movieData = {
-      movieName: document.getElementById('movieName').value,
-      director: document.getElementById('director').value,
-      year: document.getElementById('year').value,
-      region: document.getElementById('region').value,
-      genre: document.getElementById('genre').value,
-      posterUrl: document.getElementById('posterUrl').value,
-      personalRating: currentRating,
-      watchStatus: document.getElementById('watchStatus').value,
-      privateReview: document.getElementById('privateReview').value,
-      categoryId: document.getElementById('categoryId').value || null
+      personalRating: currentRating,           // 个人评分
+      watchStatus: document.getElementById('watchStatus').value,  // 观影状态
+      privateReview: document.getElementById('privateReview').value  // 私人笔记
     };
 
-    if (!movieData.movieName) {
-      showToast('请填写电影名称', 'error');
-      return;
+    // 验证：如果有评分但未选择状态，可以给个提示
+    if (movieData.personalRating > 0 && !movieData.watchStatus) {
+      movieData.watchStatus = '想看';
     }
 
     try {
-      let result;
-      if (collectionId) {
-        result = await movieAPI.updateMovie(collectionId, movieData);
-      } else {
-        result = await movieAPI.addMovie(movieData);
-      }
+      const result = await movieAPI.updateMovie(collectionId, movieData);
       if (result.code === 200) {
-        showToast(result.message, 'success');
+        showToast('保存成功', 'success');
         closeMovieModal();
-        await loadMoviesByCategory();
-        await loadCategories();
+        await forceRefresh();  // 刷新列表
+        await loadCategories();  // 刷新分类统计
       } else {
-        showToast(result.message, 'error');
+        showToast(result.message || '保存失败', 'error');
       }
     } catch (error) {
-      showToast('保存失败', 'error');
+      console.error('保存失败:', error);
+      showToast('保存失败，请重试', 'error');
     }
   }
 
