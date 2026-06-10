@@ -23,4 +23,7 @@ public interface CommentMapper {
 
     // 根据用户ID和电影ID查找公开评价（用于ReviewService）
     Comment findCommentByUserAndMovie(@Param("userId") Integer userId, @Param("movieId") Integer movieId);
+    int updateCommentRatingByUserAndMovie(@Param("userId") Integer userId,
+                                          @Param("movieId") Integer movieId,
+                                          @Param("newRating") Double newRating);
 }

@@ -43,7 +43,7 @@
   <div id="commentsList" class="comment-list"></div>
 </div>
 
-<!-- 发布/编辑评价模态框 -->
+<!-- 发布/编辑评价模态框（修改版：移除评分选择） -->
 <div id="commentModal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -53,11 +53,27 @@
     <div class="modal-body">
       <form id="commentForm">
         <input type="hidden" id="editCommentId">
-        <div class="form-group">
-          <label class="form-label">评分</label>
-          <div id="commentRatingStars"></div>
-          <input type="hidden" id="commentRatingValue" value="0">
+
+        <!-- 显示当前收藏评分（只读提示） -->
+        <div id="userRatingInfo" class="user-rating-info" style="background: var(--gray-100); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px; display: none;">
+          <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span style="font-weight: 500;">📊 您的评分：</span>
+            <span id="displayUserRatingStars"></span>
+            <span id="displayUserRatingValue" style="color: var(--primary); font-weight: 500;"></span>
+          </div>
+          <div style="font-size: 12px; color: var(--gray-500); margin-top: 6px;">
+            💡 提示：评论将使用您收藏时的评分，无需重新选择
+          </div>
         </div>
+
+        <!-- 提示未评分的情况 -->
+        <div id="noRatingWarning" class="no-rating-warning" style="background: #fef3c7; padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px; display: none;">
+          <span style="color: #d97706;">⚠️ 您尚未给这部电影评分</span>
+          <div style="font-size: 12px; color: var(--gray-600); margin-top: 6px;">
+            请先在<a href="dashboard.html" style="color: var(--primary);">我的收藏</a>中给电影评分（点击星星），然后再发布公开评价
+          </div>
+        </div>
+
         <div class="form-group">
           <label class="form-label">评价内容</label>
           <textarea id="commentContent" class="form-textarea" placeholder="分享你的观影感受..." maxlength="500"></textarea>
@@ -95,9 +111,9 @@
   let movieId = null;
   let movieDetail = null;
   let comments = [];
-  let commentRating = 0;
   let editingCommentId = null;
   let deleteTargetCommentId = null;
+  let userRating = 0;  // 用户的收藏评分
 
   // 页面初始化
   document.addEventListener('DOMContentLoaded', async () => {
@@ -117,9 +133,9 @@
     }
 
     await loadMovieDetail();
+    await loadUserRating();      // 加载用户收藏评分
     await loadComments();
     await loadAverageRating();
-    initCommentRatingStars();
     initCharCount();
     bindEvents();
   });
@@ -127,7 +143,6 @@
   // 加载电影详情
   async function loadMovieDetail() {
     try {
-      // 从收藏列表中获取电影详情
       const result = await movieAPI.getAllMovies();
       if (result.code === 200) {
         movieDetail = result.data.find(m => m.movieId == movieId);
@@ -144,28 +159,47 @@
     }
   }
 
+  // 加载用户的收藏评分
+  async function loadUserRating() {
+    try {
+      const result = await movieAPI.getAllMovies();
+      if (result.code === 200) {
+        const movie = result.data.find(m => m.movieId == movieId);
+        if (movie && movie.personalRating) {
+          userRating = movie.personalRating;
+        } else {
+          userRating = 0;
+        }
+      }
+    } catch (error) {
+      console.error('加载用户评分失败:', error);
+      userRating = 0;
+    }
+  }
+
   function renderMovieDetail() {
     const container = document.getElementById('movieDetailContainer');
     container.innerHTML = `
-                <div class="movie-detail-header">
-                    <img src="${movieDetail.posterUrl || 'https://via.placeholder.com/240x360?text=No+Poster'}"
-                         class="movie-detail-poster"
-                         onerror="this.src='https://via.placeholder.com/240x360?text=No+Poster'">
-                    <div class="movie-detail-info">
-                        <h1 class="movie-detail-title">${escapeHtml(movieDetail.movieName)}</h1>
-                        <div class="movie-detail-meta">
-                            <p>导演/演员：${escapeHtml(movieDetail.director || '未知')}</p>
-                            <p>年份：${movieDetail.year || '未知'}</p>
-                            <p>地区：${movieDetail.region || '未知'}</p>
-                            <p>类型：${movieDetail.genre || '未知'}</p>
-                        </div>
-                        <div class="my-rating">
-                            <span style="font-weight: 500;">我的评分：</span>
-                            <span id="myRatingStars">${movieDetail.personalRating ? renderStars(movieDetail.personalRating, 'small') : '暂无评分'}</span>
-                        </div>
-                    </div>
-                </div>
-            `;
+      <div class="movie-detail-header">
+        <img src="${movieDetail.posterUrl || 'https://via.placeholder.com/240x360?text=No+Poster'}"
+             class="movie-detail-poster"
+             onerror="this.src='https://via.placeholder.com/240x360?text=No+Poster'">
+        <div class="movie-detail-info">
+          <h1 class="movie-detail-title">${escapeHtml(movieDetail.movieName)}</h1>
+          <div class="movie-detail-meta">
+            <p>导演/演员：${escapeHtml(movieDetail.director || '未知')}</p>
+            <p>年份：${movieDetail.year || '未知'}</p>
+            <p>地区：${movieDetail.region || '未知'}</p>
+            <p>类型：${movieDetail.genre || '未知'}</p>
+          </div>
+          <div class="my-rating">
+            <span style="font-weight: 500;">我的评分：</span>
+            <span id="myRatingStars">${movieDetail.personalRating ? renderStars(movieDetail.personalRating, 'small') : '暂无评分'}</span>
+            <span id="myRatingValue" style="margin-left: 8px; color: var(--gray-500);">${movieDetail.personalRating ? movieDetail.personalRating.toFixed(1) + '分' : ''}</span>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   // 加载综合评分
@@ -206,35 +240,35 @@
 
     if (comments.length === 0) {
       container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">💬</div>
-                        <p class="empty-state-text">暂无评价，成为第一个评价的人吧</p>
-                    </div>
-                `;
+        <div class="empty-state">
+          <div class="empty-state-icon">💬</div>
+          <p class="empty-state-text">暂无评价，成为第一个评价的人吧</p>
+        </div>
+      `;
       return;
     }
 
     container.innerHTML = comments.map(comment => {
       const isOwner = currentUser && comment.userId === currentUser.userId;
       return `
-                    <div class="comment-item">
-                        <div class="comment-header">
-                            <div class="comment-user">
-                                <div class="user-avatar">${(comment.username || '匿')[0]}</div>
-                                <span>${maskUsername(comment.username)}</span>
-                            </div>
-                            <span class="comment-time">${formatDate(comment.createTime)}</span>
-                        </div>
-                        <div class="comment-rating">${renderStars(comment.rating, 'small')}</div>
-                        <div class="comment-content">${escapeHtml(comment.content)}</div>
-                        ${isOwner ? `
-                            <div class="comment-actions">
-                                <button class="btn btn-secondary btn-sm edit-comment" data-id="${comment.commentId}">编辑</button>
-                                <button class="btn btn-danger btn-sm delete-comment" data-id="${comment.commentId}">删除</button>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
+        <div class="comment-item">
+          <div class="comment-header">
+            <div class="comment-user">
+              <div class="user-avatar">${(comment.username || '匿')[0]}</div>
+              <span>${maskUsername(comment.username)}</span>
+            </div>
+            <span class="comment-time">${formatDate(comment.createTime)}</span>
+          </div>
+          <div class="comment-rating">${renderStars(comment.currentRating, 'small')}</div>
+          <div class="comment-content">${escapeHtml(comment.content)}</div>
+          ${isOwner ? `
+            <div class="comment-actions">
+              <button class="btn btn-secondary btn-sm edit-comment" data-id="${comment.commentId}">编辑</button>
+              <button class="btn btn-danger btn-sm delete-comment" data-id="${comment.commentId}">删除</button>
+            </div>
+          ` : ''}
+        </div>
+      `;
     }).join('');
 
     // 绑定编辑删除事件
@@ -244,143 +278,6 @@
     document.querySelectorAll('.delete-comment').forEach(btn => {
       btn.onclick = () => openDeleteCommentModal(parseInt(btn.dataset.id));
     });
-  }
-
-  // 评分星星初始化
-  function initCommentRatingStars() {
-    const container = document.getElementById('commentRatingStars');
-    if (!container) return;
-    container.innerHTML = '';
-    commentRating = 0;
-
-    // 生成5个星星，支持半星
-    for (let i = 1; i <= 5; i++) {
-      const star = document.createElement('span');
-      star.className = 'star';
-      star.setAttribute('data-value', i);
-      star.innerHTML = '★';
-      star.style.fontSize = '28px';
-      star.style.cursor = 'pointer';
-      star.style.display = 'inline-block';
-      star.style.position = 'relative';
-
-      updateCommentStarDisplay(star, i, commentRating);
-
-      // 点击事件：根据点击位置判断半星还是整星
-      star.onclick = (function(starValue) {
-        return function(e) {
-          const rect = this.getBoundingClientRect();
-          const mouseX = e.clientX - rect.left;
-          const starWidth = rect.width;
-          // 判断点击左半还是右半
-          const isHalf = mouseX < starWidth / 2;
-          let newRating = starValue;
-          if (isHalf) {
-            newRating = starValue - 0.5;
-            if (newRating < 0) newRating = 0;
-          }
-          setCommentRating(newRating);
-        };
-      })(i);
-
-      // 鼠标移动预览
-      star.onmousemove = (function(starValue) {
-        return function(e) {
-          const rect = this.getBoundingClientRect();
-          const mouseX = e.clientX - rect.left;
-          const starWidth = rect.width;
-          const isHalf = mouseX < starWidth / 2;
-          const previewValue = isHalf ? starValue - 0.5 : starValue;
-          previewCommentRating(previewValue);
-        };
-      })(i);
-
-      star.onmouseleave = () => resetCommentStarsDisplay();
-
-      container.appendChild(star);
-    }
-
-    // 添加评分显示
-    if (!document.getElementById('commentRatingDisplay')) {
-      const ratingDisplay = document.createElement('div');
-      ratingDisplay.id = 'commentRatingDisplay';
-      ratingDisplay.style.marginTop = '8px';
-      ratingDisplay.style.fontSize = '14px';
-      ratingDisplay.style.color = 'var(--gray-600)';
-      ratingDisplay.innerHTML = '当前评分：<span id="currentCommentRating">0</span> 分';
-      container.parentNode.appendChild(ratingDisplay);
-    }
-  }
-
-  // 更新单个星星显示
-  function updateCommentStarDisplay(star, starValue, rating) {
-    star.classList.remove('half-star');
-    star.style.cssText = 'font-size: 28px; cursor: pointer; display: inline-block; position: relative;';
-
-    if (rating >= starValue) {
-      star.style.color = '#fbbf24';
-    } else if (rating >= starValue - 0.5) {
-      star.classList.add('half-star');
-      star.style.color = '#d1d5db';
-    } else {
-      star.style.color = '#d1d5db';
-    }
-  }
-
-  // 预览评分
-  function previewCommentRating(previewValue) {
-    const allStars = document.querySelectorAll('#commentRatingStars .star');
-    allStars.forEach((star, index) => {
-      const starValue = index + 1;
-      star.classList.remove('half-star');
-
-      if (previewValue >= starValue) {
-        star.style.color = '#fbbf24';
-      } else if (previewValue >= starValue - 0.5) {
-        star.classList.add('half-star');
-        star.style.color = '#d1d5db';
-      } else {
-        star.style.color = '#d1d5db';
-      }
-    });
-
-    const ratingDisplay = document.getElementById('currentCommentRating');
-    if (ratingDisplay) {
-      ratingDisplay.textContent = previewValue.toFixed(1);
-      ratingDisplay.style.color = '#f59e0b';
-    }
-  }
-
-  // 重置星星显示
-  function resetCommentStarsDisplay() {
-    const allStars = document.querySelectorAll('#commentRatingStars .star');
-    allStars.forEach((star, index) => {
-      const starValue = index + 1;
-      updateCommentStarDisplay(star, starValue, commentRating);
-    });
-
-    const ratingDisplay = document.getElementById('currentCommentRating');
-    if (ratingDisplay) {
-      ratingDisplay.textContent = commentRating.toFixed(1);
-      ratingDisplay.style.color = '';
-    }
-  }
-
-  // 设置评分
-  function setCommentRating(value) {
-    commentRating = value;
-    document.getElementById('commentRatingValue').value = value;
-
-    const allStars = document.querySelectorAll('#commentRatingStars .star');
-    allStars.forEach((star, index) => {
-      const starValue = index + 1;
-      updateCommentStarDisplay(star, starValue, commentRating);
-    });
-
-    const ratingDisplay = document.getElementById('currentCommentRating');
-    if (ratingDisplay) {
-      ratingDisplay.textContent = commentRating.toFixed(1);
-    }
   }
 
   function initCharCount() {
@@ -398,15 +295,41 @@
     });
   }
 
+  // 更新评论模态框中的评分提示
+  function updateCommentModalRatingInfo() {
+    const userRatingInfo = document.getElementById('userRatingInfo');
+    const noRatingWarning = document.getElementById('noRatingWarning');
+    const displayUserRatingStars = document.getElementById('displayUserRatingStars');
+    const displayUserRatingValue = document.getElementById('displayUserRatingValue');
+
+    if (userRating > 0) {
+      // 用户已评分，显示评分提示
+      userRatingInfo.style.display = 'block';
+      noRatingWarning.style.display = 'none';
+      if (displayUserRatingStars) {
+        displayUserRatingStars.innerHTML = renderStars(userRating, 'small');
+      }
+      if (displayUserRatingValue) {
+        displayUserRatingValue.textContent = `${userRating.toFixed(1)} 分`;
+      }
+    } else {
+      // 用户未评分，显示警告
+      userRatingInfo.style.display = 'none';
+      noRatingWarning.style.display = 'block';
+    }
+  }
+
   // 发布评价模态框
   function openCommentModal() {
     editingCommentId = null;
-    commentRating = 0;
     document.getElementById('editCommentId').value = '';
     document.getElementById('commentContent').value = '';
     document.getElementById('commentModalTitle').textContent = '发布评价';
     document.getElementById('charCount').textContent = '0/500';
-    initCommentRatingStars();  // 重新初始化星星
+
+    // 更新评分提示
+    updateCommentModalRatingInfo();
+
     document.getElementById('commentModal').classList.add('show');
   }
 
@@ -415,15 +338,13 @@
     if (!comment) return;
 
     editingCommentId = commentId;
-    commentRating = comment.rating;
     document.getElementById('editCommentId').value = commentId;
     document.getElementById('commentContent').value = comment.content;
     document.getElementById('commentModalTitle').textContent = '编辑评价';
     document.getElementById('charCount').textContent = `${comment.content.length}/500`;
 
-    // 重新初始化星星并设置当前评分
-    initCommentRatingStars();
-    setCommentRating(comment.rating);
+    // 更新评分提示
+    updateCommentModalRatingInfo();
 
     document.getElementById('commentModal').classList.add('show');
   }
@@ -443,22 +364,29 @@
       showToast('评价内容不能超过500字符', 'error');
       return;
     }
-    if (commentRating === 0) {
-      showToast('请选择评分', 'error');
+
+    // 检查用户是否已评分
+    if (userRating === 0) {
+      showToast('请先在收藏中给电影评分（点击星星）再进行评价', 'error');
       return;
     }
+
+    // 禁用提交按钮，防止重复提交
+    const submitBtn = document.getElementById('submitCommentBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = '发布中...';
 
     try {
       let result;
       if (editingCommentId) {
+        // 编辑评论时不传递评分（后端会使用收藏评分）
         result = await commentAPI.updateComment(editingCommentId, {
-          rating: commentRating,  // 使用 commentRating
           content: content
         });
       } else {
+        // 发布评论时不传递评分（后端会使用收藏评分）
         result = await commentAPI.addComment({
           movieId: parseInt(movieId),
-          rating: commentRating,  // 使用 commentRating
           content: content
         });
       }
@@ -474,6 +402,9 @@
     } catch (error) {
       console.error('提交评论失败:', error);
       showToast('操作失败', 'error');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = '发布';
     }
   }
 

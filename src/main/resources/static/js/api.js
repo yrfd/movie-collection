@@ -232,3 +232,23 @@ const commentAPI = {
     }
 };
 
+const reviewAPI = {
+    // 获取我的所有评价（公开+私人）
+    getAllReviews: (type = 'all') => {
+        return request(`/review/my/all?type=${type}`);
+    },
+
+    // 获取评价统计
+    getReviewStats: () => {
+        return request('/review/my/stats');
+    },
+
+    // 更新私人评价
+    updatePrivateReview: (tmdbId, privateReview) => {
+        return request('/review/private', {
+            method: 'PUT',
+            body: JSON.stringify({ tmdbId, privateReview })
+        });
+    }
+};
+

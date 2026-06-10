@@ -270,7 +270,12 @@
     document.getElementById('profileUsername').textContent = user.username;
     document.getElementById('displayUsername').textContent = user.username;
     document.getElementById('displayEmail').textContent = user.email || '未设置';
-    document.getElementById('displayCreateTime').textContent = '注册会员';
+    if (user.createTime) {
+      // 尝试多种方式格式化
+      let formattedTime = '';
+      formattedTime = formatDate(user.createTime);
+      document.getElementById('displayCreateTime').textContent = formattedTime;
+    }
 
     await loadStats();
     bindEvents();

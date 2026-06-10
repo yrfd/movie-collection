@@ -72,4 +72,9 @@ public interface MovieMapper {
     int batchMoveToCategory(@Param("categoryId") Integer categoryId,
                             @Param("collectionIds") List<Integer> collectionIds,
                             @Param("userId") Integer userId);
+    MoviePublic findMovieById(@Param("movieId") Integer movieId);
+
+    Double getAveragePersonalRatingByMovie(@Param("movieId") Integer movieId);
+    Integer getRatingCountFromCollections(@Param("movieId") Integer movieId);
+
 }

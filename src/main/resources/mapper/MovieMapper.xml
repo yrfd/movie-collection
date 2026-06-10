@@ -125,12 +125,10 @@
         <if test="region != null and region != ''">
             AND m.region = #{region}
         </if>
-        <!-- 修复：使用 FIND_IN_SET 匹配逗号分隔的类型 -->
+
+        <!-- 类型 -->
         <if test="genre != null and genre != ''">
             AND FIND_IN_SET(#{genre}, REPLACE(m.genre, '、', ',')) > 0
-        </if>
-        <if test="categoryId != null">
-            AND c.category_id = #{categoryId}
         </if>
 
         <!-- 年份范围（新增） -->
@@ -229,5 +227,28 @@
         </foreach>
         AND user_id = #{userId}
     </update>
+
+    <!-- MovieMapper.xml -->
+    <select id="findMovieById" resultMap="MoviePublicMap">
+        SELECT * FROM movie_public WHERE movie_id = #{movieId}
+    </select>
+
+    <!-- 从收藏表计算电影平均分 -->
+    <select id="getAveragePersonalRatingByMovie" resultType="java.lang.Double">
+        SELECT AVG(personal_rating)
+        FROM movie_collection
+        WHERE movie_id = #{movieId}
+          AND personal_rating IS NOT NULL
+          AND personal_rating > 0
+    </select>
+
+    <!-- 从收藏表计算评分人数 -->
+    <select id="getRatingCountFromCollections" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM movie_collection
+        WHERE movie_id = #{movieId}
+          AND personal_rating IS NOT NULL
+          AND personal_rating > 0
+    </select>
 
 </mapper>
