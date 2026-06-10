@@ -88,12 +88,18 @@ public class MovieController {
                                        @RequestParam(required = false) String region,
                                        @RequestParam(required = false) String genre,
                                        @RequestParam(required = false) Integer categoryId,
+                                       @RequestParam(required = false) String watchStatus,
+                                       @RequestParam(required = false) Integer minYear,
+                                       @RequestParam(required = false) Integer maxYear,
+                                       @RequestParam(required = false) String sortBy,
                                        HttpServletRequest request) {
         Integer userId = getUserIdFromToken(request);
         if (userId == null) {
             return ApiResponse.error(401, "未登录");
         }
-        List<MovieCollection> movies = movieService.searchMovies(userId, keyword, director, minRating, region, genre, categoryId);
+        List<MovieCollection> movies = movieService.searchMovies(userId, keyword, director, minRating,
+                region, genre, categoryId, watchStatus,
+                minYear, maxYear, sortBy);
         return ApiResponse.success(movies);
     }
 
