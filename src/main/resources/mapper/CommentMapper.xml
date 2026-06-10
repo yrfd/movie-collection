@@ -21,8 +21,8 @@
     <select id="findCommentsByMovieId" resultMap="CommentMap">
         SELECT c.*, u.username, m.movie_name
         FROM movie_comment c
-        JOIN user u ON c.user_id = u.user_id
-        JOIN movie_public m ON c.movie_id = m.movie_id
+                 JOIN user u ON c.user_id = u.user_id
+                 JOIN movie_public m ON c.movie_id = m.movie_id
         WHERE c.movie_id = #{movieId}
         ORDER BY c.create_time DESC
     </select>
@@ -39,9 +39,9 @@
     <update id="updateComment">
         UPDATE movie_comment
         SET rating = #{rating},
-        content = #{content},
-        is_edited = TRUE,
-        update_time = NOW()
+            content = #{content},
+            is_edited = TRUE,
+            update_time = NOW()
         WHERE comment_id = #{commentId}
     </update>
 
@@ -52,8 +52,8 @@
     <select id="findCommentsByUserId" resultMap="CommentMap">
         SELECT c.*, u.username, m.movie_name
         FROM movie_comment c
-        JOIN user u ON c.user_id = u.user_id
-        JOIN movie_public m ON c.movie_id = m.movie_id
+                 JOIN user u ON c.user_id = u.user_id
+                 JOIN movie_public m ON c.movie_id = m.movie_id
         WHERE c.user_id = #{userId}
         ORDER BY c.create_time DESC
     </select>
@@ -88,4 +88,15 @@
                  JOIN movie_public m ON c.movie_id = m.movie_id
         WHERE m.tmdb_id = #{tmdbId}
     </select>
+
+    <!-- ✅ 新增：根据用户ID和电影ID查找公开评价 -->
+    <select id="findCommentByUserAndMovie" resultMap="CommentMap">
+        SELECT c.*, u.username, m.movie_name
+        FROM movie_comment c
+                 JOIN user u ON c.user_id = u.user_id
+                 JOIN movie_public m ON c.movie_id = m.movie_id
+        WHERE c.user_id = #{userId} AND c.movie_id = #{movieId}
+            LIMIT 1
+    </select>
+
 </mapper>
