@@ -125,10 +125,12 @@
         <if test="region != null and region != ''">
             AND m.region = #{region}
         </if>
-
-        <!-- 类型 -->
+        <!-- 修复：使用 FIND_IN_SET 匹配逗号分隔的类型 -->
         <if test="genre != null and genre != ''">
             AND FIND_IN_SET(#{genre}, REPLACE(m.genre, '、', ',')) > 0
+        </if>
+        <if test="categoryId != null">
+            AND c.category_id = #{categoryId}
         </if>
 
         <!-- 年份范围（新增） -->

@@ -11,6 +11,5 @@ public class CommentByTmdbRequest {
     private String director;
     private String genre;
     private String region;
-    private Double rating;
     private String content;
 }

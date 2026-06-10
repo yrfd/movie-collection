@@ -634,6 +634,7 @@
     container.innerHTML = '';
     currentRating = 0;
 
+    // 生成5个星星，每个星星代表1分
     for (let i = 1; i <= 5; i++) {
       const star = document.createElement('span');
       star.className = 'star';
@@ -685,15 +686,21 @@
     }
   }
 
+  // 更新单个星星的显示
   function updateStarDisplay(star, starValue, rating) {
+    // 清除半星样式
     star.classList.remove('half-star');
     star.style.color = '';
+
     if (rating >= starValue) {
+      // 整星全亮
       star.style.color = '#fbbf24';
     } else if (rating >= starValue - 0.5) {
+      // 半星：左半金色，右半灰色
       star.classList.add('half-star');
       star.style.color = '#d1d5db';
     } else {
+      // 无星
       star.style.color = '#d1d5db';
     }
   }
@@ -703,6 +710,7 @@
     allStars.forEach((star, index) => {
       const starValue = index + 1;
       star.classList.remove('half-star');
+
       if (previewValue >= starValue) {
         star.style.color = '#fbbf24';
       } else if (previewValue >= starValue - 0.5) {
@@ -725,6 +733,8 @@
       const starValue = index + 1;
       updateStarDisplay(star, starValue, currentRating);
     });
+
+    // 恢复显示当前评分
     const ratingDisplay = document.getElementById('currentRatingDisplay');
     if (ratingDisplay) {
       ratingDisplay.textContent = currentRating.toFixed(1);
@@ -732,26 +742,33 @@
     }
   }
 
+  // 设置评分
   function setRating(value) {
     currentRating = value;
     document.getElementById('personalRating').value = value;
+
+    // 更新所有星星的显示
     const allStars = document.querySelectorAll('#ratingStars .star');
     allStars.forEach((star, index) => {
       const starValue = index + 1;
       updateStarDisplay(star, starValue, currentRating);
     });
+
+    // 更新评分显示
     const ratingDisplay = document.getElementById('currentRatingDisplay');
     if (ratingDisplay) {
       ratingDisplay.textContent = currentRating.toFixed(1);
     }
   }
 
+  // 更新编辑时的评分显示
   function updateRatingStarsDisplay() {
     const allStars = document.querySelectorAll('#ratingStars .star');
     allStars.forEach((star, index) => {
       const starValue = index + 1;
       updateStarDisplay(star, starValue, currentRating);
     });
+
     const ratingDisplay = document.getElementById('currentRatingDisplay');
     if (ratingDisplay) {
       ratingDisplay.textContent = currentRating.toFixed(1);
