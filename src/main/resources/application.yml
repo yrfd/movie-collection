@@ -15,7 +15,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/movie_system?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8
     username: root
-    password: Ma84487814. #修改成自己数据库的密码
+    password: 123456 #修改成自己数据库的密码
   mail:
     host: smtp.qq.com          # QQ邮箱SMTP服务器
     port: 587                  # 端口（587或465）

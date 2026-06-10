@@ -2,7 +2,6 @@ package com.movie.service;
 
 import com.movie.dto.CategoryRequest;
 import com.movie.dto.MovieRequest;
-import com.movie.dto.PrivateReviewRequest;  // ✅ 新增导入
 import com.movie.entity.MovieCategory;
 import com.movie.dto.PrivateReviewRequest;
 import com.movie.entity.MovieCollection;
