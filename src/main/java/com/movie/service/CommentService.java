@@ -7,6 +7,7 @@ import com.movie.entity.MovieCollection;
 import com.movie.entity.MoviePublic;
 import com.movie.mapper.CommentMapper;
 import com.movie.mapper.MovieMapper;
+import com.movie.mapper.RatingMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +18,9 @@ import java.util.Map;
 
 @Service
 public class CommentService {
+
+    @Autowired
+    private RatingMapper ratingMapper;
 
     @Autowired
     private CommentMapper commentMapper;
@@ -57,13 +61,38 @@ public class CommentService {
     // 获取电影评分统计（根据TMDB ID）- 修复问题7
     public Map<String, Object> getMovieRatingByTmdbId(Integer tmdbId) {
         Map<String, Object> result = new HashMap<>();
-        Double avgRating = commentMapper.getAverageRatingByTmdbId(tmdbId);
-        Integer count = commentMapper.getRatingCountByTmdbId(tmdbId);
 
-        result.put("avgRating", avgRating != null ? avgRating : 0.0);
-        result.put("count", count != null ? count : 0);
-        result.put("avgRatingFormatted", String.format("%.1f", avgRating != null ? avgRating : 0.0));
-        result.put("hasRating", count != null && count > 0);
+        if (tmdbId == null) {
+            result.put("avgRating", 0.0);
+            result.put("count", 0);
+            result.put("avgRatingFormatted", "0.0");
+            result.put("hasRating", false);
+            return result;
+        }
+
+        try {
+            // ✅ 直接从 movie_public 表读取
+            MoviePublic movie = movieMapper.findMovieByTmdbId(tmdbId);
+
+            if (movie != null && movie.getAvgRating() != null && movie.getAvgRating() > 0) {
+                result.put("avgRating", movie.getAvgRating());
+                result.put("count", movie.getRatingCount() != null ? movie.getRatingCount() : 0);
+                result.put("avgRatingFormatted", String.format("%.1f", movie.getAvgRating()));
+                result.put("hasRating", true);
+            } else {
+                result.put("avgRating", 0.0);
+                result.put("count", 0);
+                result.put("avgRatingFormatted", "0.0");
+                result.put("hasRating", false);
+            }
+        } catch (Exception e) {
+            System.err.println("获取电影评分失败, tmdbId: " + tmdbId);
+            e.printStackTrace();
+            result.put("avgRating", 0.0);
+            result.put("count", 0);
+            result.put("avgRatingFormatted", "0.0");
+            result.put("hasRating", false);
+        }
 
         return result;
     }
@@ -75,7 +104,7 @@ public class CommentService {
     public Map<String, Object> addComment(Integer userId, CommentRequest request) {
         Map<String, Object> result = new HashMap<>();
 
-        // 1. 检查用户是否收藏了该电影
+        // 检查用户是否收藏了该电影
         MovieCollection collection = movieMapper.findCollectionByUserAndMovie(userId, request.getMovieId());
         if (collection == null) {
             result.put("success", false);
@@ -83,14 +112,14 @@ public class CommentService {
             return result;
         }
 
-        // 2. 检查用户是否已经评分（收藏中的评分）
+        // 检查用户是否已经评分
         if (collection.getPersonalRating() == null || collection.getPersonalRating() == 0) {
             result.put("success", false);
             result.put("message", "请先在收藏中给电影评分（点击星星）再进行评价");
             return result;
         }
 
-        // 4. 创建公开评论，评分使用收藏中的评分
+        // 创建公开评论
         Comment comment = new Comment();
         comment.setMovieId(request.getMovieId());
         comment.setUserId(userId);
@@ -98,8 +127,11 @@ public class CommentService {
 
         commentMapper.insertComment(comment);
 
-        // 5. 更新电影综合评分
-        updateMovieRatingFromCollections(request.getMovieId());
+        // ✅ 确保评分表中有记录
+        ratingMapper.insertOrUpdateRating(userId, request.getMovieId(), collection.getPersonalRating());
+
+        // 更新电影综合评分
+        updateMovieRating(request.getMovieId());
 
         result.put("success", true);
         result.put("message", "发布成功");
@@ -213,24 +245,21 @@ public class CommentService {
         return result;
     }
 
-    // 更新电影综合评分
+    // 更新电影综合
     public void updateMovieRating(Integer movieId) {
-        Double avgRating = commentMapper.getAverageRating(movieId);
-        Integer count = commentMapper.getRatingCount(movieId);
+        // 从 movie_collection 表计算
+        Double avgRating = movieMapper.getAveragePersonalRatingByMovie(movieId);
+        Integer count = movieMapper.getRatingCountFromCollections(movieId);
 
-        // 处理空值：如果没有评论，评分设为0
-        if (count == null || count == 0) {
+        if (avgRating == null || count == null || count == 0) {
             avgRating = 0.0;
             count = 0;
         }
 
-        int updated = movieMapper.updateMovieRating(movieId, avgRating, count);
-
-        // 调试日志
+        // 更新 movie_public 表
+        movieMapper.updateMovieRating(movieId, avgRating, count);
         System.out.println("📊 更新电影评分: movieId=" + movieId +
-                ", avgRating=" + avgRating +
-                ", count=" + count +
-                ", 结果=" + (updated > 0 ? "成功" : "失败"));
+                ", avgRating=" + avgRating + ", 人数=" + count);
     }
 
     private void updateMovieRatingFromCollections(Integer movieId) {

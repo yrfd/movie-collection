@@ -69,6 +69,21 @@
       font-size: 0.8rem;
       color: var(--gray-500);
     }
+    .platform-rating {
+      margin-top: 8px;
+      padding: 8px 12px;
+      background: var(--gray-100);
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+    }
+    .platform-rating .label {
+      font-weight: 500;
+      color: var(--gray-700);
+    }
+    .platform-rating .value {
+      color: var(--primary);
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -94,7 +109,7 @@
 <div class="container">
   <div class="hero-section">
     <h1 class="hero-title">发现电影的魅力</h1>
-    <p class="hero-subtitle">搜索全球电影，查看评分，收藏你的最爱</p>
+    <p class="hero-subtitle">搜索全球电影，查看本平台评分，收藏你的最爱</p>
   </div>
 
   <div class="search-section">
@@ -359,6 +374,7 @@
     }
   }
 
+  // 渲染电影卡片（不显示TMDB评分）
   function renderMovies(movies) {
     const grid = document.getElementById('moviesGrid');
     if (!movies || movies.length === 0) {
@@ -375,7 +391,11 @@
         <div class="movie-info">
           <h3 class="movie-title">${escapeHtml(movie.title)}</h3>
           <p class="movie-year">${movie.release_date ? movie.release_date.split('-')[0] : '未知'}</p>
-          <div class="stars-container">${renderStars(movie.vote_average / 2, 'small')}</div>
+          <!-- 不显示TMDB评分，只显示本平台评分（异步加载） -->
+          <div class="platform-rating" id="rating-${movie.id}">
+            <span class="label">本平台评分：</span>
+            <span class="value">加载中...</span>
+          </div>
           <div style="margin-top: 12px;">
             <button class="btn btn-primary btn-sm view-detail" data-movie='${JSON.stringify(movie)}'>查看详情</button>
             <button class="btn btn-secondary btn-sm collect-movie" data-movie='${JSON.stringify(movie)}'>⭐ 收藏</button>
@@ -383,6 +403,11 @@
         </div>
       </div>
     `).join('');
+
+    // 异步加载每部电影的本平台评分
+    movies.forEach(movie => {
+      loadPlatformRatingForCard(movie.id);
+    });
 
     // 绑定卡片点击和按钮事件
     document.querySelectorAll('.movie-card').forEach(card => {
@@ -400,7 +425,6 @@
         showMovieDetail(movieData);
       });
 
-      // ✅ 新增：收藏按钮事件
       collectBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const token = localStorage.getItem('token');
@@ -411,6 +435,28 @@
         }
       });
     });
+  }
+
+  // 为电影卡片加载本平台评分
+  async function loadPlatformRatingForCard(tmdbId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/comment/averageByTmdb/${tmdbId}`);
+      const result = await response.json();
+      const ratingContainer = document.getElementById(`rating-${tmdbId}`);
+      if (ratingContainer) {
+        if (result.code === 200 && result.data && result.data.avgRating > 0) {
+          ratingContainer.innerHTML = `<span class="label">本平台评分：</span><span class="value">⭐ ${result.data.avgRating.toFixed(1)} 分 (${result.data.count}人评价)</span>`;
+        } else {
+          ratingContainer.innerHTML = `<span class="label">本平台评分：</span><span class="value">暂无评分</span>`;
+        }
+      }
+    } catch (error) {
+      console.error('加载本平台评分失败:', error);
+      const ratingContainer = document.getElementById(`rating-${tmdbId}`);
+      if (ratingContainer) {
+        ratingContainer.innerHTML = `<span class="label">本平台评分：</span><span class="value">加载失败</span>`;
+      }
+    }
   }
 
   function renderPagination() {
@@ -652,7 +698,7 @@
     collectRating = 0;
   }
 
-  // ✅ 确认收藏
+  // index.html - confirmCollect 函数
   async function confirmCollect() {
     const tmdbId = document.getElementById('collectTmdbId').value;
     const movieName = document.getElementById('collectMovieName').value;
@@ -663,35 +709,28 @@
     const categoryId = document.getElementById('collectCategoryId').value;
     const personalRating = collectRating;
 
-    // 验证评分
     if (personalRating === 0) {
       showToast('请给电影评分（点击星星）', 'warning');
       return;
     }
 
-    // 先获取电影详情（包含导演、类型等信息）
     showToast('正在获取电影信息...', 'info');
 
     try {
       const detailResponse = await fetch(`${API_BASE_URL}/tmdb/movie/${tmdbId}`);
       const fullMovieData = await detailResponse.json();
 
-      // 解析导演
       let director = '';
       if (fullMovieData.credits && fullMovieData.credits.crew) {
         const directorObj = fullMovieData.credits.crew.find(person => person.job === 'Director');
-        if (directorObj) {
-          director = directorObj.name;
-        }
+        if (directorObj) director = directorObj.name;
       }
 
-      // 解析类型
       let genre = '';
       if (fullMovieData.genres && fullMovieData.genres.length > 0) {
         genre = fullMovieData.genres.map(g => g.name).join('、');
       }
 
-      // 解析地区
       let region = '';
       if (fullMovieData.production_countries && fullMovieData.production_countries.length > 0) {
         region = fullMovieData.production_countries[0].name;
@@ -716,6 +755,14 @@
       if (result.code === 200) {
         showToast('收藏成功！', 'success');
         closeCollectModal();
+
+        // ✅ 新增：刷新该电影在本页面的评分显示
+        await refreshMovieRatingInDiscover(tmdbId);
+
+        // ✅ 可选：触发全局评分更新事件
+        if (typeof emitRatingUpdated === 'function') {
+          emitRatingUpdated(tmdbId, personalRating, 1);
+        }
       } else {
         showToast(result.message || '收藏失败', 'error');
       }
@@ -725,7 +772,26 @@
     }
   }
 
-  // 显示电影详情模态框
+  // ✅ 新增：刷新发现电影页面的评分显示
+  async function refreshMovieRatingInDiscover(tmdbId) {
+    // 重新获取评分
+    try {
+      const response = await fetch(`${API_BASE_URL}/comment/averageByTmdb/${tmdbId}`);
+      const result = await response.json();
+
+      const ratingContainer = document.getElementById(`rating-${tmdbId}`);
+      if (ratingContainer) {
+        if (result.code === 200 && result.data && result.data.avgRating > 0) {
+          ratingContainer.innerHTML = `<span class="label">本平台评分：</span><span class="value">⭐ ${result.data.avgRating.toFixed(1)} 分 (${result.data.count}人评价)</span>`;
+        } else {
+          ratingContainer.innerHTML = `<span class="label">本平台评分：</span><span class="value">暂无评分</span>`;
+        }
+      }
+    } catch (error) {
+      console.error('刷新评分失败:', error);
+    }
+  }
+  // 显示电影详情模态框（使用本平台评分）
   async function showMovieDetail(movie) {
     const modal = document.createElement('div');
     modal.className = 'modal show';
@@ -775,7 +841,7 @@
               <p><strong>上映日期：</strong> ${fullMovieData.release_date || movie.release_date || '未知'}</p>
               <p><strong>导演：</strong> ${escapeHtml(director)}</p>
               <p><strong>主演：</strong> ${cast.length > 0 ? cast.map(escapeHtml).join('、') : '暂无信息'}</p>
-              <p><strong>评分：</strong> ${fullMovieData.vote_average ? fullMovieData.vote_average.toFixed(1) : (movie.vote_average ? movie.vote_average.toFixed(1) : '暂无')} / 10</p>
+              <p><strong>本平台评分：</strong> <span id="platformRatingDetail">加载中...</span></p>
               <p><strong>时长：</strong> ${fullMovieData.runtime ? fullMovieData.runtime + '分钟' : '未知'}</p>
               <p><strong>类型：</strong> ${fullMovieData.genres ? fullMovieData.genres.map(g => g.name).join('、') : '未知'}</p>
               <p><strong>简介：</strong> ${escapeHtml(fullMovieData.overview || movie.overview || '暂无简介')}</p>
@@ -783,7 +849,7 @@
                 <button class="btn btn-primary" id="collectFromDetailBtn">⭐ 收藏到我的电影</button>
               </div>
               <div id="detailCommentSection" style="margin-top: 20px;">
-                <h4>用户评分</h4>
+                <h4>用户评价</h4>
                 <div id="detailAvgRating"></div>
                 <button class="btn btn-secondary btn-sm" id="detailRateBtn">📝 发表评价</button>
                 <div id="detailCommentsList" style="margin-top: 16px; max-height: 300px; overflow-y: auto;"></div>
@@ -792,6 +858,9 @@
           </div>
         </div>
       `;
+
+      // 加载本平台评分
+      loadPlatformRatingForDetail(movie.id);
 
       // 绑定收藏按钮事件
       modal.querySelector('#collectFromDetailBtn').addEventListener('click', () => {
@@ -821,6 +890,28 @@
           </div>
         </div>
       `;
+    }
+  }
+
+  // 为详情页加载本平台评分
+  async function loadPlatformRatingForDetail(tmdbId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/comment/averageByTmdb/${tmdbId}`);
+      const result = await response.json();
+      const ratingSpan = document.getElementById('platformRatingDetail');
+      if (ratingSpan) {
+        if (result.code === 200 && result.data && result.data.avgRating > 0) {
+          ratingSpan.innerHTML = `⭐ ${result.data.avgRating.toFixed(1)} 分 (${result.data.count}人评价)`;
+        } else {
+          ratingSpan.innerHTML = '暂无评分';
+        }
+      }
+    } catch (error) {
+      console.error('加载本平台评分失败:', error);
+      const ratingSpan = document.getElementById('platformRatingDetail');
+      if (ratingSpan) {
+        ratingSpan.innerHTML = '加载失败';
+      }
     }
   }
 

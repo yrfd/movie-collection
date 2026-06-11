@@ -8,6 +8,7 @@ import com.movie.entity.MovieCollection;
 import com.movie.entity.MoviePublic;
 import com.movie.mapper.CommentMapper;
 import com.movie.mapper.MovieMapper;
+import com.movie.mapper.RatingMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,8 +18,10 @@ import java.util.Map;
 
 
 @Service
-public class MovieService {
+public class   MovieService {
 
+    @Autowired
+    private RatingMapper ratingMapper;
     @Autowired
     private MovieMapper movieMapper;
     @Autowired
@@ -102,6 +105,12 @@ public class MovieService {
 
         movieMapper.insertCollection(collection);
 
+        // ✅ 如果有评分，立即更新综合评分
+        if (request.getPersonalRating() != null && request.getPersonalRating() > 0) {
+            commentService.updateMovieRating(movie.getMovieId());
+            System.out.println("✅ 收藏时已更新评分: movieId=" + movie.getMovieId());
+        }
+
         result.put("success", true);
         result.put("message", "添加成功");
         result.put("collectionId", collection.getCollectionId());
@@ -109,6 +118,7 @@ public class MovieService {
     }
 
     // 更新电影收藏
+    // MovieService.java - updateCollection 方法
     public Map<String, Object> updateCollection(Integer collectionId, MovieRequest request) {
         Map<String, Object> result = new HashMap<>();
 
@@ -118,6 +128,7 @@ public class MovieService {
             result.put("message", "收藏记录不存在");
             return result;
         }
+
         Double oldRating = collection.getPersonalRating();
         Double newRating = request.getPersonalRating();
 
@@ -127,16 +138,15 @@ public class MovieService {
 
         movieMapper.updateCollection(collection);
 
-        if (oldRating != null && newRating != null && !oldRating.equals(newRating)) {
-            // 更新该用户对该电影的评论评分
-            commentMapper.updateCommentRatingByUserAndMovie(
-                    collection.getUserId(),
-                    collection.getMovieId(),
-                    newRating
-            );
-            // 重新计算电影综合评分
+        // ✅ 评分发生变化时，更新综合评分
+        boolean hasOldRating = oldRating != null && oldRating > 0;
+        boolean hasNewRating = newRating != null && newRating > 0;
+
+        if (hasOldRating != hasNewRating || (hasOldRating && hasNewRating && !oldRating.equals(newRating))) {
             commentService.updateMovieRating(collection.getMovieId());
+            System.out.println("✅ 评分变化，已更新综合评分: " + collection.getMovieId());
         }
+
         result.put("success", true);
         result.put("message", "更新成功");
         return result;

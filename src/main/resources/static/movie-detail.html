@@ -396,6 +396,9 @@
         closeCommentModal();
         await loadComments();
         await loadAverageRating();
+
+        // ✅ 触发全局评分更新事件
+        await triggerRatingUpdate();
       } else {
         showToast(result.message, 'error');
       }
@@ -429,12 +432,35 @@
         closeDeleteCommentModal();
         await loadComments();
         await loadAverageRating();
+
+        // ✅ 触发全局评分更新事件
+        await triggerRatingUpdate();
       } else {
         showToast(result.message, 'error');
       }
     } catch (error) {
       console.error('删除评论失败:', error);
       showToast('删除失败', 'error');
+    }
+  }
+
+  // ✅ 新增：触发全局评分更新
+  async function triggerRatingUpdate() {
+    try {
+      // 获取最新的评分数据
+      const ratingResult = await commentAPI.getAverageRating(movieId);
+      if (ratingResult.code === 200 && ratingResult.data && movieDetail) {
+        const tmdbId = movieDetail.tmdbId;
+        if (tmdbId) {
+          // 调用全局事件
+          if (typeof emitRatingUpdated === 'function') {
+            emitRatingUpdated(tmdbId, ratingResult.data.avgRating, ratingResult.data.count);
+            console.log(`✅ 已触发评分更新事件: tmdbId=${tmdbId}, 新评分=${ratingResult.data.avgRating}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('触发评分更新失败:', error);
     }
   }
 
