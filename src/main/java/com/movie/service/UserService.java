@@ -5,11 +5,13 @@ import com.movie.entity.MovieCategory;
 import com.movie.entity.User;
 import com.movie.mapper.MovieMapper;
 import com.movie.mapper.UserMapper;
+import com.movie.util.FileUploadUtil;
 import com.movie.util.JwtUtil;
 import com.movie.util.MD5Util;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -21,7 +23,7 @@ public class UserService {
     private UserMapper userMapper;
 
     @Autowired
-    private MovieMapper movieMapper;  // 新增：注入 MovieMapper 用于创建分类
+    private MovieMapper movieMapper;
 
     @Autowired
     private VerificationCodeService codeService;
@@ -29,27 +31,24 @@ public class UserService {
     /**
      * 用户注册 - 同时创建默认分类
      */
-    @Transactional  // 添加事务注解，确保用户创建和分类创建要么都成功，要么都失败
+    @Transactional
     public Map<String, Object> register(RegisterRequest request) {
         Map<String, Object> result = new HashMap<>();
 
-        // 检查用户名是否已存在
         if (userMapper.findByUsername(request.getUsername()) != null) {
             result.put("success", false);
             result.put("message", "用户名已存在");
             return result;
         }
 
-        // 检查邮箱是否已被注册
         User existingUserByEmail = userMapper.findByEmail(request.getEmail());
-        if (userMapper.findByEmail(request.getEmail()) != null) {
+        if (existingUserByEmail != null) {
             result.put("success", false);
-            result.put("message", "该邮箱已被注册，用户名为：" + existingUserByEmail.getUsername() + "，\n请使用其他邮箱注册或者使用该账号进行登录");
+            result.put("message", "该邮箱已被注册，用户名为：" + existingUserByEmail.getUsername());
             result.put("existingUsername", existingUserByEmail.getUsername());
             return result;
         }
 
-        // 创建新用户
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(MD5Util.md5(request.getPassword()));
@@ -57,7 +56,6 @@ public class UserService {
 
         userMapper.insert(user);
 
-        // ========== 新增：为用户创建默认分类 ==========
         createDefaultCategories(user.getUserId());
 
         result.put("success", true);
@@ -66,38 +64,25 @@ public class UserService {
         return result;
     }
 
-    /**
-     * 为用户创建默认分类
-     * @param userId 用户ID
-     */
     private void createDefaultCategories(Integer userId) {
-        // 方式一：创建一个默认分类
         MovieCategory defaultCategory = new MovieCategory();
         defaultCategory.setUserId(userId);
         defaultCategory.setCategoryName("默认收藏");
         movieMapper.insertCategory(defaultCategory);
-
-        // 方式二：创建多个默认分类（可选，根据需要决定是否启用）
-        // 如果想要多个默认分类，取消下面的注释
-        /*
-        String[] defaultCategories = {"想看清单", "已看过", "我的最爱"};
-        for (String categoryName : defaultCategories) {
-            MovieCategory category = new MovieCategory();
-            category.setUserId(userId);
-            category.setCategoryName(categoryName);
-            movieMapper.insertCategory(category);
-        }
-        */
     }
 
-    // 其他方法保持不变...
+    /**
+     * 登录 - 支持用户名或邮箱
+     */
     public Map<String, Object> login(LoginRequest request) {
         Map<String, Object> result = new HashMap<>();
 
-        User user = userMapper.findByUsername(request.getUsername());
+        // ✅ 使用用户名或邮箱查找
+        User user = userMapper.findByUsernameOrEmail(request.getUsername());
+
         if (user == null) {
             result.put("success", false);
-            result.put("message", "用户名不存在");
+            result.put("message", "用户名/邮箱不存在");
             return result;
         }
 
@@ -119,6 +104,7 @@ public class UserService {
                 "userId", user.getUserId(),
                 "username", user.getUsername(),
                 "email", user.getEmail(),
+                "avatar", user.getAvatar() != null ? user.getAvatar() : "/images/default-avatar.png",
                 "createTime", user.getCreateTime()
         );
 
@@ -137,6 +123,62 @@ public class UserService {
         return userMapper.findByUserId(userId);
     }
 
+    /**
+     * 获取用户信息（包含头像）
+     */
+    public Map<String, Object> getUserProfile(Integer userId) {
+        Map<String, Object> result = new HashMap<>();
+
+        User user = userMapper.findByUserId(userId);
+        if (user == null) {
+            result.put("success", false);
+            result.put("message", "用户不存在");
+            return result;
+        }
+
+        result.put("success", true);
+        result.put("userId", user.getUserId());
+        result.put("username", user.getUsername());
+        result.put("email", user.getEmail());
+        result.put("avatar", user.getAvatar() != null ? user.getAvatar() : "/images/default-avatar.png");
+        result.put("createTime", user.getCreateTime());
+
+        return result;
+    }
+
+    /**
+     * 上传头像
+     */
+    @Transactional
+    public Map<String, Object> uploadAvatar(Integer userId, MultipartFile file) {
+        Map<String, Object> result = new HashMap<>();
+
+        String avatarUrl = FileUploadUtil.uploadAvatar(file, userId);
+        if (avatarUrl == null) {
+            result.put("success", false);
+            result.put("message", "头像上传失败，请检查文件格式（支持图片，大小不超过2MB）");
+            return result;
+        }
+
+        User user = userMapper.findByUserId(userId);
+        if (user == null) {
+            result.put("success", false);
+            result.put("message", "用户不存在");
+            return result;
+        }
+
+        if (user.getAvatar() != null && !user.getAvatar().isEmpty()) {
+            FileUploadUtil.deleteOldAvatar(user.getAvatar());
+        }
+
+        userMapper.updateAvatar(userId, avatarUrl);
+
+        result.put("success", true);
+        result.put("message", "头像上传成功");
+        result.put("avatarUrl", avatarUrl);
+        return result;
+    }
+
     public Map<String, Object> updateProfile(Integer userId, ProfileUpdateRequest request) {
         Map<String, Object> result = new HashMap<>();
 
@@ -147,9 +189,7 @@ public class UserService {
             return result;
         }
 
-        // 更新邮箱
         if (request.getEmail() != null && !request.getEmail().isEmpty()) {
-            // 检查邮箱是否已被其他用户使用
             User existingUser = userMapper.findByEmail(request.getEmail());
             if (existingUser != null && !existingUser.getUserId().equals(userId)) {
                 result.put("success", false);
@@ -159,7 +199,6 @@ public class UserService {
             user.setEmail(request.getEmail());
         }
 
-        // 更新密码
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             user.setPassword(MD5Util.md5(request.getPassword()));
         }
@@ -175,9 +214,6 @@ public class UserService {
         return userMapper.findByEmail(email) != null;
     }
 
-    /**
-     * 通过邮箱更新密码（找回密码用）
-     */
     public boolean updatePasswordByEmail(String email, String newPassword) {
         User user = userMapper.findByEmail(email);
         if (user == null) {
@@ -188,31 +224,24 @@ public class UserService {
         return result > 0;
     }
 
-    /**
-     * 重置密码（带验证码验证）
-     */
     public Map<String, Object> resetPassword(ResetPasswordRequest request) {
         Map<String, Object> result = new HashMap<>();
 
-        // 1. 验证邮箱是否存在
         if (!isEmailRegistered(request.getEmail())) {
             result.put("success", false);
             result.put("message", "该邮箱未注册");
             return result;
         }
 
-        // 2. 验证验证码
         if (!codeService.verifyCode(request.getEmail(), request.getCode())) {
             result.put("success", false);
             result.put("message", "验证码错误或已过期");
             return result;
         }
 
-        // 3. 更新密码
         boolean success = updatePasswordByEmail(request.getEmail(), request.getNewPassword());
 
         if (success) {
-            // 验证码使用后立即删除
             codeService.deleteCode(request.getEmail());
             result.put("success", true);
             result.put("message", "密码重置成功");
@@ -227,14 +256,12 @@ public class UserService {
     public Map<String, Object> updateEmail(Integer userId, UpdateEmailRequest request) {
         Map<String, Object> result = new HashMap<>();
 
-        // 1. 验证新邮箱格式
         if (!isValidEmail(request.getNewEmail())) {
             result.put("success", false);
             result.put("message", "邮箱格式不正确");
             return result;
         }
 
-        // 2. 检查新邮箱是否已被其他用户注册
         User existingUser = userMapper.findByEmail(request.getNewEmail());
         if (existingUser != null && !existingUser.getUserId().equals(userId)) {
             result.put("success", false);
@@ -242,17 +269,14 @@ public class UserService {
             return result;
         }
 
-        // 3. 验证验证码
         if (!codeService.verifyCode(request.getNewEmail(), request.getCode())) {
             result.put("success", false);
             result.put("message", "验证码错误或已过期");
             return result;
         }
 
-        // 4. 更新邮箱
         int updated = userMapper.updateEmail(userId, request.getNewEmail());
         if (updated > 0) {
-            // 验证码使用后删除
             codeService.deleteCode(request.getNewEmail());
             result.put("success", true);
             result.put("message", "邮箱修改成功");
@@ -264,9 +288,6 @@ public class UserService {
         return result;
     }
 
-    /**
-     * 验证邮箱格式
-     */
     private boolean isValidEmail(String email) {
         if (email == null || email.isEmpty()) return false;
         String regex = "^[A-Za-z0-9+_.-]+@(.+)$";
@@ -295,7 +316,6 @@ public class UserService {
             return result;
         }
 
-        // 验证旧密码
         if (!user.getPassword().equals(MD5Util.md5(request.getOldPassword()))) {
             result.put("success", false);
             result.put("message", "当前密码错误");
@@ -309,7 +329,6 @@ public class UserService {
             return result;
         }
 
-        // 更新密码
         int updated = userMapper.updatePassword(userId, MD5Util.md5(request.getNewPassword()));
         if (updated > 0) {
             result.put("success", true);

@@ -16,25 +16,43 @@
         <result column="username" property="username"/>
         <result column="movie_name" property="movieName"/>
         <result column="current_rating" property="currentRating"/>
+        <result column="reply_to_username" property="replyToUsername"/>
+        <collection property="replies" ofType="com.movie.entity.Comment"
+                    select="findRepliesByParentId" column="comment_id"/>
     </resultMap>
 
     <select id="findCommentsByMovieId" resultMap="CommentMap">
-        SELECT c.*, u.username, m.movie_name,col.personal_rating as current_rating
+        SELECT c.*, u.username, m.movie_name, col.personal_rating as current_rating,
+               ru.username as reply_to_username
         FROM movie_comment c
                  JOIN user u ON c.user_id = u.user_id
                  JOIN movie_public m ON c.movie_id = m.movie_id
                  LEFT JOIN movie_collection col ON col.user_id = c.user_id AND col.movie_id = c.movie_id
-        WHERE c.movie_id = #{movieId}
+                 LEFT JOIN user ru ON ru.user_id = c.reply_to
+        WHERE c.movie_id = #{movieId} AND (c.reply_to IS NULL OR c.reply_to = 0)
         ORDER BY c.create_time DESC
     </select>
 
+    <select id="findRepliesByParentId" resultType="com.movie.entity.Comment">
+        SELECT c.*, u.username, col.personal_rating as current_rating
+        FROM movie_comment c
+                 JOIN user u ON c.user_id = u.user_id
+                 LEFT JOIN movie_collection col ON col.user_id = c.user_id AND col.movie_id = c.movie_id
+        WHERE c.reply_to = #{comment_id}
+        ORDER BY c.create_time ASC
+    </select>
+
     <select id="findCommentById" resultMap="CommentMap">
-        SELECT * FROM movie_comment WHERE comment_id = #{commentId}
+        SELECT c.*, u.username, m.movie_name
+        FROM movie_comment c
+                 JOIN user u ON c.user_id = u.user_id
+                 JOIN movie_public m ON c.movie_id = m.movie_id
+        WHERE c.comment_id = #{commentId}
     </select>
 
     <insert id="insertComment" useGeneratedKeys="true" keyProperty="commentId">
-        INSERT INTO movie_comment (movie_id, user_id, content)
-        VALUES (#{movieId}, #{userId}, #{content})
+        INSERT INTO movie_comment (movie_id, user_id, content, reply_to)
+        VALUES (#{movieId}, #{userId}, #{content}, #{replyTo})
     </insert>
 
     <update id="updateComment">
@@ -58,14 +76,6 @@
         ORDER BY c.create_time DESC
     </select>
 
-    <select id="getAverageRating" resultType="java.lang.Double">
-        SELECT AVG(rating) FROM movie_comment WHERE movie_id = #{movieId}
-    </select>
-
-    <select id="getRatingCount" resultType="java.lang.Integer">
-        SELECT COUNT(*) FROM movie_comment WHERE movie_id = #{movieId}
-    </select>
-
     <select id="findCommentsByTmdbId" resultMap="CommentMap">
         SELECT c.*, u.username, m.movie_name
         FROM movie_comment c
@@ -75,21 +85,6 @@
         ORDER BY c.create_time DESC
     </select>
 
-    <select id="getAverageRatingByTmdbId" resultType="java.lang.Double">
-        SELECT AVG(c.rating)
-        FROM movie_comment c
-                 JOIN movie_public m ON c.movie_id = m.movie_id
-        WHERE m.tmdb_id = #{tmdbId}
-    </select>
-
-    <select id="getRatingCountByTmdbId" resultType="java.lang.Integer">
-        SELECT COUNT(*)
-        FROM movie_comment c
-                 JOIN movie_public m ON c.movie_id = m.movie_id
-        WHERE m.tmdb_id = #{tmdbId}
-    </select>
-
-    <!-- ✅ 新增：根据用户ID和电影ID查找公开评价 -->
     <select id="findCommentByUserAndMovie" resultMap="CommentMap">
         SELECT c.*, u.username, m.movie_name
         FROM movie_comment c
@@ -98,12 +93,5 @@
         WHERE c.user_id = #{userId} AND c.movie_id = #{movieId}
             LIMIT 1
     </select>
-
-    <update id="updateCommentRatingByUserAndMovie">
-        UPDATE movie_comment
-        SET rating = #{newRating},
-            update_time = NOW()
-        WHERE user_id = #{userId} AND movie_id = #{movieId}
-    </update>
 
 </mapper>

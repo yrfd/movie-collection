@@ -109,6 +109,7 @@ public class MovieService {
     }
 
     // 更新电影收藏
+    @Transactional
     public Map<String, Object> updateCollection(Integer collectionId, MovieRequest request) {
         Map<String, Object> result = new HashMap<>();
 
@@ -118,25 +119,18 @@ public class MovieService {
             result.put("message", "收藏记录不存在");
             return result;
         }
-        Double oldRating = collection.getPersonalRating();
-        Double newRating = request.getPersonalRating();
 
+        // 更新收藏信息
         collection.setPersonalRating(request.getPersonalRating());
         collection.setWatchStatus(request.getWatchStatus());
         collection.setPrivateReview(request.getPrivateReview());
 
         movieMapper.updateCollection(collection);
 
-        if (oldRating != null && newRating != null && !oldRating.equals(newRating)) {
-            // 更新该用户对该电影的评论评分
-            commentMapper.updateCommentRatingByUserAndMovie(
-                    collection.getUserId(),
-                    collection.getMovieId(),
-                    newRating
-            );
-            // 重新计算电影综合评分
-            commentService.updateMovieRating(collection.getMovieId());
-        }
+        // ✅ 修正：评分变化时，重新计算电影综合评分（从收藏表统计）
+        // 注意：不需要同步到评论表，评论表不存储评分
+        commentService.updateMovieRatingFromCollections(collection.getMovieId());
+
         result.put("success", true);
         result.put("message", "更新成功");
         return result;
@@ -160,6 +154,7 @@ public class MovieService {
         return movieMapper.searchCollections(userId, keyword, director, minRating, englishRegion,
                 genre, categoryId, watchStatus, minYear, maxYear, sortBy);
     }
+
     /**
      * 获取按评分排序的电影排行榜
      */
