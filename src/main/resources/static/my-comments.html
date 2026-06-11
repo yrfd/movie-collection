@@ -6,52 +6,186 @@
     <title>我的评价 - 银幕记忆</title>
     <link rel="stylesheet" href="css/style.css">
     <style>
-        .comment-list {
+        .reviews-container {
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 20px;
         }
-        .comment-item {
+        .review-tabs {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
             background: var(--white);
-            border-radius: var(--radius-md);
-            padding: 20px;
+            border-radius: var(--radius-lg);
+            padding: 8px;
             box-shadow: var(--shadow-sm);
         }
-        .comment-header {
+        .review-tab {
+            flex: 1;
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: var(--gray-600);
+        }
+        .review-tab.active {
+            background: var(--primary);
+            color: white;
+        }
+        .stats-cards {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            flex: 1;
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+            text-align: center;
+            box-shadow: var(--shadow-sm);
+        }
+        .stat-number {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .stat-label {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-top: 4px;
+        }
+        .review-card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .review-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 12px;
+            flex-wrap: wrap;
+            gap: 8px;
         }
-        .comment-movie {
+        .review-movie {
+            font-size: 1.1rem;
             font-weight: 600;
             color: var(--primary);
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
         }
-        .comment-movie:hover {
-            text-decoration: underline;
+        .review-type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 500;
         }
-        .comment-time {
+        .review-type-public {
+            background: #d1fae5;
+            color: #059669;
+        }
+        .review-type-private {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .review-type-both {
+            background: #e0e7ff;
+            color: #4f46e5;
+        }
+        .review-time {
             font-size: 12px;
             color: var(--gray-400);
         }
-        .comment-content {
+        .review-content {
+            line-height: 1.6;
+            color: var(--gray-700);
+            background: var(--gray-100);
+            padding: 12px 16px;
+            border-radius: var(--radius-md);
             margin: 12px 0;
-            line-height: 1.5;
         }
-        .comment-actions {
+        .private-review-content {
+            background: #fffbeb;
+            border-left: 3px solid #f59e0b;
+        }
+        .public-review-content {
+            background: #f0fdf4;
+            border-left: 3px solid #10b981;
+        }
+        .review-label {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .review-actions {
             display: flex;
             gap: 12px;
             justify-content: flex-end;
-            margin-top: 12px;
+            margin-top: 16px;
             padding-top: 12px;
-            border-top: 1px solid var(--gray-100);
+            border-top: 1px solid var(--gray-200);
+            flex-wrap: wrap;
         }
         .empty-state {
             text-align: center;
             padding: 60px 20px;
             background: var(--white);
             border-radius: var(--radius-lg);
+        }
+        .public-review-item {
+            margin-bottom: 12px;
+        }
+        .public-review-item:last-child {
+            margin-bottom: 0;
+        }
+        .review-time-small {
+            font-size: 10px;
+            color: var(--gray-400);
+            margin-top: 6px;
+            text-align: right;
+        }
+        .edit-public-btn, .delete-public-btn {
+            font-size: 11px;
+            padding: 2px 8px;
+            margin-left: 6px;
+        }
+        .public-review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        @media (max-width: 768px) {
+            .review-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .stats-cards {
+                flex-direction: column;
+            }
+            .review-tabs {
+                flex-direction: column;
+            }
+            .review-actions {
+                justify-content: flex-start;
+            }
         }
     </style>
 </head>
@@ -62,7 +196,7 @@
         <div class="nav-menu">
             <a href="top-rated.html">排行榜</a>
             <a href="index.html">发现电影</a>
-            <a href="my-collections.html">我的收藏</a>
+            <a href="dashboard.html">我的收藏</a>
             <a href="my-comments.html" class="active">我的评价</a>
             <a href="profile.html">个人资料</a>
         </div>
@@ -77,31 +211,81 @@
 
 <div class="container">
     <h2 style="margin-bottom: 20px;">我的评价</h2>
-    <div id="commentsList" class="comment-list"></div>
+
+    <div class="stats-cards" id="statsCards">
+        <div class="stat-card">
+            <div class="stat-number" id="totalPublicCount">-</div>
+            <div class="stat-label">公开评价</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="totalPrivateCount">-</div>
+            <div class="stat-label">私人笔记</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-number" id="bothCount">-</div>
+            <div class="stat-label">同时拥有</div>
+        </div>
+    </div>
+
+    <div class="review-tabs">
+        <button class="review-tab active" data-type="all">📋 全部评价</button>
+        <button class="review-tab" data-type="public">🌐 公开评价</button>
+        <button class="review-tab" data-type="private">🔒 私人笔记</button>
+        <button class="review-tab" data-type="both">✨ 两者都有</button>
+    </div>
+
+    <div id="reviewsList" class="reviews-container"></div>
     <div id="pagination" class="pagination"></div>
 </div>
 
-<!-- 编辑评价模态框 -->
-<div id="editCommentModal" class="modal">
-    <div class="modal-content">
+<!-- 编辑私人评价模态框 -->
+<div id="editPrivateModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
         <div class="modal-header">
-            <h3 class="modal-title">编辑评价</h3>
-            <button class="modal-close" id="closeEditModalBtn">&times;</button>
+            <h3 class="modal-title">编辑私人笔记</h3>
+            <button class="modal-close" id="closePrivateModalBtn">&times;</button>
         </div>
         <div class="modal-body">
             <div class="form-group">
-                <label class="form-label">评分</label>
-                <div id="editRatingStars"></div>
-                <input type="hidden" id="editRatingValue" value="0">
-            </div>
-            <div class="form-group">
-                <label class="form-label">评价内容</label>
-                <textarea id="editContent" class="form-textarea" maxlength="500"></textarea>
+                <label class="form-label">私人笔记</label>
+                <textarea id="privateReviewContent" class="form-textarea"
+                          placeholder="写下你的私人观影感受（仅自己可见）"
+                          maxlength="1000" rows="6"></textarea>
+                <span class="form-hint" id="privateCharCount">0/1000</span>
             </div>
         </div>
         <div class="modal-footer">
-            <button class="btn btn-secondary" id="cancelEditBtn">取消</button>
-            <button class="btn btn-primary" id="submitEditBtn">保存</button>
+            <button class="btn btn-secondary" id="cancelPrivateBtn">取消</button>
+            <button class="btn btn-primary" id="savePrivateBtn">保存</button>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑公开评价模态框 -->
+<div id="editPublicModal" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3 class="modal-title">编辑公开评价</h3>
+            <button class="modal-close" id="closePublicModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="background: var(--gray-100); padding: 12px; border-radius: var(--radius-md); margin-bottom: 16px;">
+                <span style="font-weight: 500;">当前评分：</span>
+                <span id="displayPublicRatingStars"></span>
+                <span id="displayPublicRatingValue" style="color: var(--primary); font-weight: 500;"></span>
+            </div>
+            <div style="font-size: 12px; color: var(--gray-500); margin-bottom: 16px;">
+                💡 提示：评分来源于您收藏时的评分，不可在此修改
+            </div>
+            <div class="form-group">
+                <label class="form-label">评价内容</label>
+                <textarea id="publicReviewContent" class="form-textarea" maxlength="500" placeholder="分享你的观影感受..."></textarea>
+                <span class="form-hint" id="publicCharCount">0/500</span>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" id="cancelPublicBtn">取消</button>
+            <button class="btn btn-primary" id="savePublicBtn">保存</button>
         </div>
     </div>
 </div>
@@ -109,11 +293,18 @@
 <script src="js/api.js"></script>
 <script src="js/common.js"></script>
 <script>
-    let myComments = [];
+    let allReviews = [];
+    let currentType = 'all';
     let currentPage = 1;
     let pageSize = 10;
-    let editingCommentId = null;
-    let editRating = 0;
+
+    // 编辑私人评价相关变量
+    let editingPrivateMovieId = null;
+    let editingPrivateTmdbId = null;
+
+    // 编辑公开评价相关变量
+    let editingPublicCommentId = null;
+    let editingPublicRating = 0;
 
     document.addEventListener('DOMContentLoaded', async () => {
         const user = getCurrentUser();
@@ -123,158 +314,522 @@
             return;
         }
         document.getElementById('username').textContent = user.username || '用户';
-        await loadMyComments();
+
+        await loadAllReviews();
+        await loadReviewStats();
+        bindEvents();
+        initCharCount();
     });
 
-    async function loadMyComments() {
+    async function loadAllReviews() {
         try {
-            const result = await commentAPI.getMyComments();
+            const result = await reviewAPI.getAllReviews('all');
             if (result.code === 200) {
-                myComments = result.data || [];
-                renderComments();
+                let reviews = result.data || [];
+                reviews = reviews.filter(review => review.reviewType !== 'NONE');
+                allReviews = reviews;
+                currentPage = 1;
+                renderReviews();
+            } else {
+                showToast(result.message || '加载失败', 'error');
+                allReviews = [];
+                renderReviews();
             }
         } catch (error) {
             console.error('加载评价失败:', error);
             showToast('加载失败', 'error');
+            allReviews = [];
+            renderReviews();
         }
     }
 
-    function renderComments() {
+    // 根据标签页类型过滤评价
+    function shouldShowReview(review) {
+        if (currentType === 'public') {
+            return review.publicReviews && review.publicReviews.length > 0;
+        } else if (currentType === 'private') {
+            return review.privateReview && review.privateReview.trim();
+        } else if (currentType === 'both') {
+            return (review.privateReview && review.privateReview.trim()) &&
+                (review.publicReviews && review.publicReviews.length > 0);
+        }
+        return true;
+    }
+
+    async function loadReviewStats() {
+        try {
+            const result = await reviewAPI.getReviewStats();
+            if (result.code === 200 && result.data) {
+                document.getElementById('totalPublicCount').textContent = result.data.totalPublicCount || 0;
+                document.getElementById('totalPrivateCount').textContent = result.data.totalPrivateCount || 0;
+                document.getElementById('bothCount').textContent = result.data.bothCount || 0;
+            }
+        } catch (error) {
+            console.error('加载统计失败:', error);
+        }
+    }
+
+    function renderReviews() {
+        // 根据当前标签页类型过滤数据
+        let filteredReviews = allReviews.filter(review => shouldShowReview(review));
+
         const start = (currentPage - 1) * pageSize;
         const end = start + pageSize;
-        const pageComments = myComments.slice(start, end);
-        const container = document.getElementById('commentsList');
+        const pageReviews = filteredReviews.slice(start, end);
+        const container = document.getElementById('reviewsList');
 
-        if (pageComments.length === 0) {
-            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">💬</div><p>暂无评价，去<a href="index.html">发现电影</a>发表评价吧</p></div>`;
+        if (pageReviews.length === 0) {
+            let emptyMessage = '';
+            switch(currentType) {
+                case 'public':
+                    emptyMessage = '暂无公开评价，去<a href="index.html">发现电影</a>发表评价吧';
+                    break;
+                case 'private':
+                    emptyMessage = '暂无私人笔记，在<a href="dashboard.html">我的收藏</a>中可以为电影添加私人笔记';
+                    break;
+                case 'both':
+                    emptyMessage = '暂无同时有公开评价和私人笔记的电影';
+                    break;
+                default:
+                    emptyMessage = '暂无评价内容，去<a href="index.html">发现电影</a>开始你的电影之旅吧';
+            }
+            container.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📝</div><p>${emptyMessage}</p></div>`;
             document.getElementById('pagination').innerHTML = '';
             return;
         }
 
-        container.innerHTML = pageComments.map(comment => `
-      <div class="comment-item">
-        <div class="comment-header">
-          <div class="comment-movie" onclick="window.location.href='movie-detail.html?id=${comment.movieId}'">
-            🎬 ${escapeHtml(comment.movieName)}
-          </div>
-          <span class="comment-time">${formatDate(comment.createTime)}</span>
-        </div>
-        <div class="comment-rating">${renderStars(comment.rating, 'small')}</div>
-        <div class="comment-content">${escapeHtml(comment.content)}</div>
-        <div class="comment-actions">
-          <button class="btn btn-secondary btn-sm edit-comment" data-id="${comment.commentId}" data-rating="${comment.rating}" data-content="${escapeHtml(comment.content)}">编辑</button>
-          <button class="btn btn-danger btn-sm delete-comment" data-id="${comment.commentId}">删除</button>
-        </div>
-      </div>
-    `).join('');
+        container.innerHTML = pageReviews.map(review => {
+            // 确定标签类型
+            let typeBadge = '';
+            const hasPrivate = review.privateReview && review.privateReview.trim();
+            const hasPublic = review.publicReviews && review.publicReviews.length > 0;
 
-        document.querySelectorAll('.edit-comment').forEach(btn => {
-            btn.onclick = () => {
-                const commentId = parseInt(btn.dataset.id);
-                const rating = parseFloat(btn.dataset.rating);
-                const content = btn.dataset.content;
-                openEditCommentModal(commentId, rating, content);
-            };
-        });
-
-        document.querySelectorAll('.delete-comment').forEach(btn => {
-            btn.onclick = async () => {
-                if (confirm('确定要删除这条评价吗？')) {
-                    const result = await commentAPI.deleteComment(parseInt(btn.dataset.id));
-                    if (result.code === 200) {
-                        showToast('删除成功', 'success');
-                        await loadMyComments();
-                    } else {
-                        showToast(result.message, 'error');
-                    }
+            if (currentType === 'public') {
+                typeBadge = '<span class="review-type-badge review-type-public">🌐 公开评价</span>';
+            } else if (currentType === 'private') {
+                typeBadge = '<span class="review-type-badge review-type-private">🔒 私人笔记</span>';
+            } else if (currentType === 'both') {
+                typeBadge = '<span class="review-type-badge review-type-both">✨ 公开+私人</span>';
+            } else {
+                if (hasPrivate && hasPublic) {
+                    typeBadge = '<span class="review-type-badge review-type-both">✨ 公开+私人</span>';
+                } else if (hasPublic) {
+                    typeBadge = '<span class="review-type-badge review-type-public">🌐 公开评价</span>';
+                } else if (hasPrivate) {
+                    typeBadge = '<span class="review-type-badge review-type-private">🔒 私人笔记</span>';
                 }
-            };
-        });
+            }
 
-        renderPagination();
+            // 生成私人笔记内容 HTML
+            let privateReviewHtml = '';
+            if (hasPrivate && (currentType !== 'public')) {
+                privateReviewHtml = `
+                    <div class="review-content private-review-content">
+                        <div class="review-label">
+                            <span>🔒</span> 私人笔记（仅自己可见）
+                        </div>
+                        <div>${escapeHtml(review.privateReview)}</div>
+                    </div>
+                `;
+            }
+
+            // 生成所有公开评价的 HTML（支持多条）
+            let publicReviewsHtml = '';
+            if (hasPublic && (currentType !== 'private')) {
+                // 按创建时间倒序排列（最新的在前）
+                const sortedReviews = [...review.publicReviews].sort((a, b) => {
+                    if (!a.createTime && !b.createTime) return 0;
+                    if (!a.createTime) return 1;
+                    if (!b.createTime) return -1;
+                    return new Date(b.createTime) - new Date(a.createTime);
+                });
+
+                publicReviewsHtml = sortedReviews.map(pr => `
+                    <div class="public-review-item">
+                        <div class="review-content public-review-content">
+                            <div class="public-review-header">
+                                <div class="review-label">
+                                    <span>🌐</span> 公开评价
+                                    <span style="margin-left: auto;">${renderStars(pr.rating, 'small')}</span>
+                                </div>
+                                <div>
+                                    ${pr.isEdited ? '<span style="font-size: 10px; color: var(--gray-400);">(已编辑)</span>' : ''}
+                                    <!-- ✅ 修改：在公开评价标签页也显示编辑和删除按钮 -->
+                                    <button class="btn btn-secondary btn-sm edit-public-btn edit-public"
+                                            data-comment-id="${pr.commentId}"
+                                            data-rating="${pr.rating || 0}"
+                                            data-content="${escapeHtml(pr.content || '')}">
+                                        ✏️
+                                    </button>
+                                    <button class="btn btn-danger btn-sm delete-public-btn delete-public"
+                                            data-comment-id="${pr.commentId}">
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>
+                            <div>${escapeHtml(pr.content)}</div>
+                            <div class="review-time-small">
+                                发表于：${formatDate(pr.createTime)}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            // 生成操作按钮（根据标签页类型）
+            let actionButtons = '';
+
+            if (currentType === 'private') {
+                // 私人笔记标签页：只显示编辑私人笔记按钮
+                actionButtons = `
+                    <button class="btn btn-secondary btn-sm edit-private"
+                            data-movie-id="${review.movieId}"
+                            data-tmdb-id="${review.tmdbId || ''}"
+                            data-content="${escapeHtml(review.privateReview || '')}">
+                        ✏️ 编辑私人笔记
+                    </button>
+                `;
+            } else if (currentType === 'public') {
+                // ✅ 公开评价标签页：显示发表新评价按钮（编辑删除按钮已在每条评价上）
+                actionButtons = `
+                    <button class="btn btn-primary btn-sm goto-public"
+                            data-movie-id="${review.movieId}">
+                        📝 发表新评价
+                    </button>
+                `;
+            } else {
+                // 全部评价 或 两者都有 标签页：显示所有按钮
+                actionButtons = `
+                    <button class="btn btn-secondary btn-sm edit-private"
+                            data-movie-id="${review.movieId}"
+                            data-tmdb-id="${review.tmdbId || ''}"
+                            data-content="${escapeHtml(review.privateReview || '')}">
+                        ✏️ 编辑私人笔记
+                    </button>
+                    <button class="btn btn-primary btn-sm goto-public"
+                            data-movie-id="${review.movieId}">
+                        📝 发表新评价
+                    </button>
+                `;
+            }
+
+            return `
+                <div class="review-card" data-movie-id="${review.movieId}">
+                    <div class="review-header">
+                        <div class="review-movie" data-movie-id="${review.movieId}">
+                            🎬 ${escapeHtml(review.movieName)}
+                            ${typeBadge}
+                            ${review.personalRating ? `<span style="font-size: 12px; color: var(--primary);">⭐ ${review.personalRating.toFixed(1)}</span>` : ''}
+                        </div>
+                        <span class="review-time">${formatDate(review.reviewTime)}</span>
+                    </div>
+
+                    ${privateReviewHtml}
+                    ${publicReviewsHtml}
+
+                    <div class="review-actions">
+                        ${actionButtons}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        bindCardEvents();
+        renderPagination(filteredReviews.length);
     }
 
-    function renderPagination() {
-        const totalPages = Math.ceil(myComments.length / pageSize);
+    function renderPagination(totalItems) {
+        const totalPages = Math.ceil(totalItems / pageSize);
         if (totalPages <= 1) {
             document.getElementById('pagination').innerHTML = '';
             return;
         }
-        let html = '';
-        for (let i = 1; i <= totalPages; i++) {
+
+        let html = '<div class="pagination-container">';
+        html += `<button class="page-btn ${currentPage === 1 ? 'disabled' : ''}" data-page="${currentPage - 1}" ${currentPage === 1 ? 'disabled' : ''}>上一页</button>`;
+
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, currentPage + 2);
+
+        if (startPage > 1) {
+            html += `<button class="page-btn" data-page="1">1</button>`;
+            if (startPage > 2) html += `<span class="page-ellipsis">...</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
             html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
         }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) html += `<span class="page-ellipsis">...</span>`;
+            html += `<button class="page-btn" data-page="${totalPages}">${totalPages}</button>`;
+        }
+
+        html += `<button class="page-btn ${currentPage === totalPages ? 'disabled' : ''}" data-page="${currentPage + 1}" ${currentPage === totalPages ? 'disabled' : ''}>下一页</button>`;
+        html += '</div>';
+
         document.getElementById('pagination').innerHTML = html;
-        document.querySelectorAll('.page-btn').forEach(btn => {
-            btn.onclick = () => {
-                currentPage = parseInt(btn.dataset.page);
-                renderComments();
-            };
+
+        document.querySelectorAll('.page-btn:not(.disabled)').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const page = parseInt(btn.dataset.page);
+                if (!isNaN(page) && page !== currentPage && page >= 1 && page <= totalPages) {
+                    currentPage = page;
+                    renderReviews();
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
         });
     }
 
-    function openEditCommentModal(commentId, rating, content) {
-        editingCommentId = commentId;
-        editRating = rating;
-        document.getElementById('editRatingValue').value = rating;
-        document.getElementById('editContent').value = content;
-        initEditRatingStars();
-        document.getElementById('editCommentModal').classList.add('show');
+    function bindCardEvents() {
+        document.querySelectorAll('.review-movie').forEach(elem => {
+            elem.addEventListener('click', () => {
+                const movieId = elem.dataset.movieId;
+                window.location.href = `movie-detail.html?id=${movieId}`;
+            });
+        });
+
+        document.querySelectorAll('.edit-private').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const movieId = parseInt(btn.dataset.movieId);
+                const tmdbId = btn.dataset.tmdbId ? parseInt(btn.dataset.tmdbId) : null;
+                const content = btn.dataset.content === 'null' ? '' : btn.dataset.content;
+                openEditPrivateModal(movieId, tmdbId, content);
+            });
+        });
+
+        document.querySelectorAll('.edit-public').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const commentId = parseInt(btn.dataset.commentId);
+                const rating = parseFloat(btn.dataset.rating);
+                const content = btn.dataset.content;
+                openEditPublicModal(commentId, rating, content);
+            });
+        });
+
+        document.querySelectorAll('.delete-public').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const commentId = parseInt(btn.dataset.commentId);
+                if (confirm('确定要删除这条公开评价吗？')) {
+                    const result = await commentAPI.deleteComment(commentId);
+                    if (result.code === 200) {
+                        showToast('删除成功', 'success');
+                        await loadAllReviews();
+                        await loadReviewStats();
+                    } else {
+                        showToast(result.message, 'error');
+                    }
+                }
+            });
+        });
+
+        document.querySelectorAll('.goto-public').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const movieId = parseInt(btn.dataset.movieId);
+                window.location.href = `movie-detail.html?id=${movieId}`;
+            });
+        });
     }
 
-    function initEditRatingStars() {
-        const container = document.getElementById('editRatingStars');
-        if (!container) return;
-        container.innerHTML = '';
-        for (let i = 1; i <= 5; i++) {
-            const star = document.createElement('span');
-            star.className = 'star';
-            star.innerHTML = i <= editRating ? '★' : '☆';
-            star.style.fontSize = '24px';
-            star.style.cursor = 'pointer';
-            star.onclick = () => {
-                editRating = i;
-                document.getElementById('editRatingValue').value = i;
-                initEditRatingStars();
-            };
-            container.appendChild(star);
+    function openEditPrivateModal(movieId, tmdbId, content) {
+        editingPrivateMovieId = movieId;
+        editingPrivateTmdbId = tmdbId;
+        document.getElementById('privateReviewContent').value = content || '';
+        document.getElementById('privateCharCount').textContent = `${(content || '').length}/1000`;
+        document.getElementById('editPrivateModal').classList.add('show');
+    }
+
+    async function savePrivateReview() {
+        const content = document.getElementById('privateReviewContent').value.trim();
+
+        if (content.length > 1000) {
+            showToast('私人笔记不能超过1000字符', 'error');
+            return;
+        }
+
+        const saveBtn = document.getElementById('savePrivateBtn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中...';
+
+        try {
+            let tmdbId = editingPrivateTmdbId;
+
+            if (!tmdbId && editingPrivateMovieId) {
+                const review = allReviews.find(r => r.movieId === editingPrivateMovieId);
+                if (review && review.tmdbId) {
+                    tmdbId = review.tmdbId;
+                }
+            }
+
+            if (!tmdbId && editingPrivateMovieId) {
+                const moviesResult = await movieAPI.getAllMovies();
+                if (moviesResult.code === 200) {
+                    const movie = moviesResult.data.find(m => m.movieId === editingPrivateMovieId);
+                    if (movie && movie.tmdbId) {
+                        tmdbId = movie.tmdbId;
+                    }
+                }
+            }
+
+            if (!tmdbId) {
+                showToast('无法获取电影信息，请稍后重试', 'error');
+                saveBtn.disabled = false;
+                saveBtn.textContent = '保存';
+                return;
+            }
+
+            const result = await reviewAPI.updatePrivateReview(tmdbId, content);
+
+            if (result.code === 200) {
+                showToast('保存成功', 'success');
+                closePrivateModal();
+                await loadAllReviews();
+                await loadReviewStats();
+            } else {
+                showToast(result.message || '保存失败', 'error');
+            }
+        } catch (error) {
+            console.error('保存私人评价失败:', error);
+            showToast('保存失败，请重试', 'error');
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = '保存';
         }
     }
 
-    function closeEditModal() {
-        document.getElementById('editCommentModal').classList.remove('show');
+    function closePrivateModal() {
+        editingPrivateMovieId = null;
+        editingPrivateTmdbId = null;
+        document.getElementById('editPrivateModal').classList.remove('show');
+        document.getElementById('privateReviewContent').value = '';
     }
 
-    async function submitEdit() {
-        const content = document.getElementById('editContent').value.trim();
+    function openEditPublicModal(commentId, rating, content) {
+        editingPublicCommentId = commentId;
+        editingPublicRating = rating;
+
+        document.getElementById('publicReviewContent').value = content || '';
+        document.getElementById('publicCharCount').textContent = `${(content || '').length}/500`;
+
+        const displayStars = document.getElementById('displayPublicRatingStars');
+        const displayValue = document.getElementById('displayPublicRatingValue');
+        if (displayStars) {
+            displayStars.innerHTML = renderStars(rating, 'small');
+        }
+        if (displayValue) {
+            displayValue.textContent = `${rating.toFixed(1)} 分`;
+        }
+
+        document.getElementById('editPublicModal').classList.add('show');
+    }
+
+    async function savePublicReview() {
+        const content = document.getElementById('publicReviewContent').value.trim();
+
         if (!content) {
             showToast('请填写评价内容', 'error');
             return;
         }
-        if (editRating === 0) {
-            showToast('请选择评分', 'error');
+        if (content.length > 500) {
+            showToast('评价内容不能超过500字符', 'error');
             return;
         }
+
+        const saveBtn = document.getElementById('savePublicBtn');
+        saveBtn.disabled = true;
+        saveBtn.textContent = '保存中...';
+
         try {
-            const result = await commentAPI.updateComment(editingCommentId, {
-                rating: editRating,
+            const result = await commentAPI.updateComment(editingPublicCommentId, {
                 content: content
             });
+
             if (result.code === 200) {
                 showToast('更新成功', 'success');
-                closeEditModal();
-                await loadMyComments();
+                closePublicModal();
+                await loadAllReviews();
+                await loadReviewStats();
             } else {
                 showToast(result.message, 'error');
             }
         } catch (error) {
+            console.error('更新公开评价失败:', error);
             showToast('更新失败', 'error');
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = '保存';
         }
     }
 
-    document.getElementById('closeEditModalBtn')?.addEventListener('click', closeEditModal);
-    document.getElementById('cancelEditBtn')?.addEventListener('click', closeEditModal);
-    document.getElementById('submitEditBtn')?.addEventListener('click', submitEdit);
+    function closePublicModal() {
+        editingPublicCommentId = null;
+        editingPublicRating = 0;
+        document.getElementById('editPublicModal').classList.remove('show');
+        document.getElementById('publicReviewContent').value = '';
+    }
+
+    function initCharCount() {
+        const privateTextarea = document.getElementById('privateReviewContent');
+        const publicTextarea = document.getElementById('publicReviewContent');
+
+        if (privateTextarea) {
+            privateTextarea.addEventListener('input', () => {
+                const length = privateTextarea.value.length;
+                document.getElementById('privateCharCount').textContent = `${length}/1000`;
+            });
+        }
+
+        if (publicTextarea) {
+            publicTextarea.addEventListener('input', () => {
+                const length = publicTextarea.value.length;
+                document.getElementById('publicCharCount').textContent = `${length}/500`;
+            });
+        }
+    }
+
+    async function switchTab(type) {
+        currentType = type;
+        currentPage = 1;
+
+        document.querySelectorAll('.review-tab').forEach(tab => {
+            if (tab.dataset.type === type) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+
+        renderReviews();
+    }
+
+    function bindEvents() {
+        document.querySelectorAll('.review-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                switchTab(tab.dataset.type);
+            });
+        });
+
+        document.getElementById('closePrivateModalBtn')?.addEventListener('click', closePrivateModal);
+        document.getElementById('cancelPrivateBtn')?.addEventListener('click', closePrivateModal);
+        document.getElementById('savePrivateBtn')?.addEventListener('click', savePrivateReview);
+
+        document.getElementById('closePublicModalBtn')?.addEventListener('click', closePublicModal);
+        document.getElementById('cancelPublicBtn')?.addEventListener('click', closePublicModal);
+        document.getElementById('savePublicBtn')?.addEventListener('click', savePublicReview);
+
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+        });
+    }
 </script>
 </body>
 </html>

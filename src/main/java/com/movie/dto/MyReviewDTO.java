@@ -2,6 +2,7 @@ package com.movie.dto;
 
 import lombok.Data;
 import java.util.Date;
+import java.util.List;
 
 @Data
 public class MyReviewDTO {
@@ -13,9 +14,20 @@ public class MyReviewDTO {
     private Double personalRating;     // 个人评分
     private String watchStatus;        // 观看状态
     private String privateReview;      // 私人评价
-    private String publicReview;       // 公开评价内容
+    private List<PublicReviewInfo> publicReviews;       // 公开评价内容
     private Double publicRating;       // 公开评分
     private Integer commentId;         // 公开评价ID
     private Date reviewTime;           // 评价时间
     private String reviewType;         // 评价类型: PRIVATE, PUBLIC, BOTH, NONE
+
+    @Data
+    public static class PublicReviewInfo {
+        private Integer commentId;
+        private String content;
+        private Double rating;  // 当前收藏评分（动态）
+        private Date createTime;
+        private Date updateTime;
+        private Boolean isEdited;
+    }
+
 }

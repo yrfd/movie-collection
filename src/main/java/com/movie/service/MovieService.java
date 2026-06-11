@@ -2,10 +2,11 @@ package com.movie.service;
 
 import com.movie.dto.CategoryRequest;
 import com.movie.dto.MovieRequest;
-import com.movie.dto.PrivateReviewRequest;  // ✅ 新增导入
 import com.movie.entity.MovieCategory;
+import com.movie.dto.PrivateReviewRequest;
 import com.movie.entity.MovieCollection;
 import com.movie.entity.MoviePublic;
+import com.movie.mapper.CommentMapper;
 import com.movie.mapper.MovieMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,11 +15,16 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+
 @Service
 public class MovieService {
 
     @Autowired
     private MovieMapper movieMapper;
+    @Autowired
+    private CommentMapper commentMapper;
+    @Autowired
+    private CommentService commentService;
 
     // 地区映射（解决中英文匹配问题）
     private static final Map<String, String> REGION_MAP = new HashMap<>();
@@ -58,6 +64,7 @@ public class MovieService {
         return movieMapper.findCollectionsByUserId(userId);
     }
 
+    // 添加电影收藏
     @Transactional
     public Map<String, Object> addCollection(Integer userId, MovieRequest request) {
         Map<String, Object> result = new HashMap<>();
@@ -101,6 +108,7 @@ public class MovieService {
         return result;
     }
 
+    // 更新电影收藏
     public Map<String, Object> updateCollection(Integer collectionId, MovieRequest request) {
         Map<String, Object> result = new HashMap<>();
 
@@ -110,6 +118,8 @@ public class MovieService {
             result.put("message", "收藏记录不存在");
             return result;
         }
+        Double oldRating = collection.getPersonalRating();
+        Double newRating = request.getPersonalRating();
 
         collection.setPersonalRating(request.getPersonalRating());
         collection.setWatchStatus(request.getWatchStatus());
@@ -117,11 +127,22 @@ public class MovieService {
 
         movieMapper.updateCollection(collection);
 
+        if (oldRating != null && newRating != null && !oldRating.equals(newRating)) {
+            // 更新该用户对该电影的评论评分
+            commentMapper.updateCommentRatingByUserAndMovie(
+                    collection.getUserId(),
+                    collection.getMovieId(),
+                    newRating
+            );
+            // 重新计算电影综合评分
+            commentService.updateMovieRating(collection.getMovieId());
+        }
         result.put("success", true);
         result.put("message", "更新成功");
         return result;
     }
 
+    // 删除电影收藏
     public Map<String, Object> deleteCollection(Integer collectionId) {
         Map<String, Object> result = new HashMap<>();
         movieMapper.deleteCollection(collectionId);
@@ -131,18 +152,24 @@ public class MovieService {
     }
 
     public List<MovieCollection> searchMovies(Integer userId, String keyword, String director,
-                                              Double minRating, String region, String genre, Integer categoryId) {
+                                              Double minRating, String region, String genre,
+                                              Integer categoryId, String watchStatus,
+                                              Integer minYear, Integer maxYear, String sortBy) {
         // 转换地区为英文
         String englishRegion = convertRegionToEnglish(region);
-        return movieMapper.searchCollections(userId, keyword, director, minRating, englishRegion, genre, categoryId);
+        return movieMapper.searchCollections(userId, keyword, director, minRating, englishRegion,
+                genre, categoryId, watchStatus, minYear, maxYear, sortBy);
     }
-
-    // ========== 排行榜 ==========
-
+    /**
+     * 获取按评分排序的电影排行榜
+     */
     public List<Map<String, Object>> getMoviesOrderByRating() {
         return movieMapper.selectMoviesOrderByRating();
     }
 
+    /**
+     * 获取按评论数排序的电影排行榜
+     */
     public List<Map<String, Object>> getMoviesOrderByCommentCount() {
         return movieMapper.selectMoviesOrderByCommentCount();
     }
@@ -234,11 +261,11 @@ public class MovieService {
     }
 
     public List<MovieCollection> getCollectionsByCategory(Integer userId, Integer categoryId) {
-        return movieMapper.searchCollections(userId, null, null, null, null, null, categoryId);
+        return movieMapper.searchCollections(userId, null, null, null, null, null,
+                categoryId, null, null, null, null);
     }
 
     // ========== 私人评价管理 ==========
-
     /**
      * 更新私人评价
      * @param userId 用户ID

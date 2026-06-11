@@ -83,15 +83,7 @@ public class CommentService {
             return result;
         }
 
-        // 2. 检查用户是否已经有公开评价
-        Comment existingComment = commentMapper.findCommentByUserAndMovie(userId, request.getMovieId());
-        if (existingComment != null) {
-            result.put("success", false);
-            result.put("message", "你已经评价过这部电影了");
-            return result;
-        }
-
-        // 3. 检查用户是否已经评分（收藏中的评分）
+        // 2. 检查用户是否已经评分（收藏中的评分）
         if (collection.getPersonalRating() == null || collection.getPersonalRating() == 0) {
             result.put("success", false);
             result.put("message", "请先在收藏中给电影评分（点击星星）再进行评价");
@@ -102,13 +94,12 @@ public class CommentService {
         Comment comment = new Comment();
         comment.setMovieId(request.getMovieId());
         comment.setUserId(userId);
-        comment.setRating(collection.getPersonalRating());
         comment.setContent(request.getContent());
 
         commentMapper.insertComment(comment);
 
         // 5. 更新电影综合评分
-        updateMovieRating(request.getMovieId());
+        updateMovieRatingFromCollections(request.getMovieId());
 
         result.put("success", true);
         result.put("message", "发布成功");
@@ -165,7 +156,6 @@ public class CommentService {
         Comment comment = new Comment();
         comment.setMovieId(movie.getMovieId());
         comment.setUserId(userId);
-        comment.setRating(collection.getPersonalRating());
         comment.setContent(request.getContent());
         commentMapper.insertComment(comment);
 
@@ -196,14 +186,12 @@ public class CommentService {
                 ? collection.getPersonalRating() : 0.0;
 
         // 更新评论时，评分仍然使用收藏中的评分
-        comment.setRating(ratingFromCollection);
         comment.setContent(request.getContent());
         comment.setIsEdited(true);
 
         commentMapper.updateComment(comment);
 
         // 更新电影综合评分
-        updateMovieRating(comment.getMovieId());
 
         result.put("success", true);
         result.put("message", "更新成功");
@@ -218,7 +206,6 @@ public class CommentService {
         Comment comment = commentMapper.findCommentById(commentId);
         if (comment != null) {
             commentMapper.deleteComment(commentId);
-            updateMovieRating(comment.getMovieId());
         }
 
         result.put("success", true);
@@ -226,8 +213,8 @@ public class CommentService {
         return result;
     }
 
-    // 更新电影综合评分（修复问题7）
-    private void updateMovieRating(Integer movieId) {
+    // 更新电影综合评分
+    public void updateMovieRating(Integer movieId) {
         Double avgRating = commentMapper.getAverageRating(movieId);
         Integer count = commentMapper.getRatingCount(movieId);
 
@@ -244,5 +231,22 @@ public class CommentService {
                 ", avgRating=" + avgRating +
                 ", count=" + count +
                 ", 结果=" + (updated > 0 ? "成功" : "失败"));
+    }
+
+    private void updateMovieRatingFromCollections(Integer movieId) {
+        // 从收藏表计算平均分
+        Double avgRating = movieMapper.getAveragePersonalRatingByMovie(movieId);
+        Integer count = movieMapper.getRatingCountFromCollections(movieId);
+
+        if (count == null || count == 0) {
+            avgRating = 0.0;
+            count = 0;
+        }
+
+        movieMapper.updateMovieRating(movieId, avgRating, count);
+
+        System.out.println("更新电影综合评分: movieId=" + movieId +
+                ", avgRating=" + avgRating +
+                ", 评分人数=" + count);
     }
 }

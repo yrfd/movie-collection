@@ -100,26 +100,80 @@
         FROM movie_collection c
         JOIN movie_public m ON c.movie_id = m.movie_id
         WHERE c.user_id = #{userId}
+
+        <!-- 关键词搜索 -->
         <if test="keyword != null and keyword != ''">
             AND m.movie_name LIKE CONCAT('%', #{keyword}, '%')
         </if>
+
+        <!-- 导演 -->
         <if test="director != null and director != ''">
             AND m.director LIKE CONCAT('%', #{director}, '%')
         </if>
-        <if test="minRating != null">
+
+        <!-- 个人评分 -->
+        <if test="minRating != null and minRating != ''">
             AND c.personal_rating >= #{minRating}
         </if>
+
+        <!-- 观影状态（新增） -->
+        <if test="watchStatus != null and watchStatus != ''">
+            AND c.watch_status = #{watchStatus}
+        </if>
+
+        <!-- 地区 -->
         <if test="region != null and region != ''">
             AND m.region = #{region}
         </if>
-        <!-- 修复：使用 FIND_IN_SET 匹配逗号分隔的类型 -->
+
+        <!-- 类型 -->
         <if test="genre != null and genre != ''">
             AND FIND_IN_SET(#{genre}, REPLACE(m.genre, '、', ',')) > 0
         </if>
+
+        <!-- 年份范围（新增） -->
+        <if test="minYear != null">
+            AND m.year >= #{minYear}
+        </if>
+        <if test="maxYear != null">
+            AND m.year &lt;= #{maxYear}
+        </if>
+
+        <!-- 分类 -->
         <if test="categoryId != null">
             AND c.category_id = #{categoryId}
         </if>
-        ORDER BY c.create_time DESC
+
+        <!-- 排序（新增） -->
+        <choose>
+            <when test="sortBy == 'create_time_desc'">
+                ORDER BY c.create_time DESC
+            </when>
+            <when test="sortBy == 'create_time_asc'">
+                ORDER BY c.create_time ASC
+            </when>
+            <when test="sortBy == 'personal_rating_desc'">
+                ORDER BY c.personal_rating DESC NULLS LAST
+            </when>
+            <when test="sortBy == 'personal_rating_asc'">
+                ORDER BY c.personal_rating ASC NULLS LAST
+            </when>
+            <when test="sortBy == 'year_desc'">
+                ORDER BY m.year DESC
+            </when>
+            <when test="sortBy == 'year_asc'">
+                ORDER BY m.year ASC
+            </when>
+            <when test="sortBy == 'movie_name_asc'">
+                ORDER BY m.movie_name ASC
+            </when>
+            <when test="sortBy == 'movie_name_desc'">
+                ORDER BY m.movie_name DESC
+            </when>
+            <otherwise>
+                ORDER BY c.create_time DESC
+            </otherwise>
+        </choose>
     </select>
 
     <!-- 排行榜 -->
@@ -173,5 +227,28 @@
         </foreach>
         AND user_id = #{userId}
     </update>
+
+    <!-- MovieMapper.xml -->
+    <select id="findMovieById" resultMap="MoviePublicMap">
+        SELECT * FROM movie_public WHERE movie_id = #{movieId}
+    </select>
+
+    <!-- 从收藏表计算电影平均分 -->
+    <select id="getAveragePersonalRatingByMovie" resultType="java.lang.Double">
+        SELECT AVG(personal_rating)
+        FROM movie_collection
+        WHERE movie_id = #{movieId}
+          AND personal_rating IS NOT NULL
+          AND personal_rating > 0
+    </select>
+
+    <!-- 从收藏表计算评分人数 -->
+    <select id="getRatingCountFromCollections" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM movie_collection
+        WHERE movie_id = #{movieId}
+          AND personal_rating IS NOT NULL
+          AND personal_rating > 0
+    </select>
 
 </mapper>

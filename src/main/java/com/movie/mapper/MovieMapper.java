@@ -34,7 +34,12 @@ public interface MovieMapper {
                                             @Param("minRating") Double minRating,
                                             @Param("region") String region,
                                             @Param("genre") String genre,
-                                            @Param("categoryId") Integer categoryId);
+                                            @Param("categoryId") Integer categoryId,
+                                            @Param("watchStatus") String watchStatus,
+                                            @Param("minYear") Integer minYear,
+                                            @Param("maxYear") Integer maxYear,
+                                            @Param("sortBy") String sortBy);
+
 
     MoviePublic findMovieByTmdbId(@Param("tmdbId") Integer tmdbId);
 
@@ -67,4 +72,9 @@ public interface MovieMapper {
     int batchMoveToCategory(@Param("categoryId") Integer categoryId,
                             @Param("collectionIds") List<Integer> collectionIds,
                             @Param("userId") Integer userId);
+    MoviePublic findMovieById(@Param("movieId") Integer movieId);
+
+    Double getAveragePersonalRatingByMovie(@Param("movieId") Integer movieId);
+    Integer getRatingCountFromCollections(@Param("movieId") Integer movieId);
+
 }

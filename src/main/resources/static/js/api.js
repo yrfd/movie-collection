@@ -142,6 +142,52 @@ const movieAPI = {
             method: 'DELETE'
         });
     },
+    // 获取用户的所有分类
+    getCategories: () => {
+        return request('/movie/categories');
+    },
+
+    // 创建新分类
+    createCategory: (categoryName) => {
+        return request('/movie/categories', {
+            method: 'POST',
+            body: JSON.stringify({ categoryName })
+        });
+    },
+
+    // 删除分类
+    deleteCategory: (categoryId) => {
+        return request(`/movie/categories/${categoryId}`, {
+            method: 'DELETE'
+        });
+    },
+
+    // 移动单个收藏到分类
+    moveToCategory: (collectionId, categoryId) => {
+        return request(`/movie/collections/${collectionId}/move-to/${categoryId}`, {
+            method: 'PUT'
+        });
+    },
+
+    // 批量移动收藏到分类
+    batchMoveToCategory: (collectionIds, categoryId) => {
+        return request(`/movie/collections/batch-move-to/${categoryId}`, {
+            method: 'POST',
+            body: JSON.stringify(collectionIds)
+        });
+    },
+
+    updateCategory: (categoryId, categoryName) => {
+        return request(`/movie/categories/${categoryId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ categoryName })
+        });
+    },
+
+    getMoviesByCategory: (categoryId) => {
+        return request(`/movie/collections/by-category/${categoryId}`);
+    }
+
 };
 
 // ==================== 评论相关 API ====================
@@ -185,3 +231,24 @@ const commentAPI = {
         return request('/comment/my');
     }
 };
+
+const reviewAPI = {
+    // 获取我的所有评价（公开+私人）
+    getAllReviews: (type = 'all') => {
+        return request(`/review/my/all?type=${type}`);
+    },
+
+    // 获取评价统计
+    getReviewStats: () => {
+        return request('/review/my/stats');
+    },
+
+    // 更新私人评价
+    updatePrivateReview: (tmdbId, privateReview) => {
+        return request('/review/private', {
+            method: 'PUT',
+            body: JSON.stringify({ tmdbId, privateReview })
+        });
+    }
+};
+

@@ -8,7 +8,6 @@ public class Comment {
     private Integer commentId;
     private Integer movieId;
     private Integer userId;
-    private Double rating;
     private String content;
     private Integer likeCount;
     private Integer replyTo;
@@ -19,4 +18,5 @@ public class Comment {
     // 关联字段
     private String username;
     private String movieName;
+    private Double currentRating;
 }
