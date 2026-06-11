@@ -61,6 +61,7 @@
         ORDER BY c.create_time DESC
     </select>
 
+    <!-- 评分相关查询 - 使用 snapshot_rating -->
     <select id="getAverageRating" resultType="java.lang.Double">
         SELECT AVG(snapshot_rating)
         FROM movie_comment
@@ -104,7 +105,6 @@
           AND c.snapshot_rating > 0
     </select>
 
-    <!-- 根据用户ID和电影ID查找公开评价 -->
     <select id="findCommentByUserAndMovie" resultMap="CommentMap">
         SELECT c.*, u.username, m.movie_name
         FROM movie_comment c
@@ -114,7 +114,6 @@
             LIMIT 1
     </select>
 
-    <!-- 更新用户对电影的评论评分 -->
     <update id="updateCommentRatingByUserAndMovie">
         UPDATE movie_comment
         SET snapshot_rating = #{newRating},

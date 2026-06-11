@@ -68,6 +68,18 @@
       font-size: 0.9rem;
     }
 
+    .movie-actors {
+      font-size: 0.75rem;
+      color: var(--gray-600);
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+
+    .movie-actors strong {
+      color: var(--gray-700);
+      margin-right: 4px;
+    }
+
     .category-count {
       background: var(--gray-200);
       padding: 2px 8px;
@@ -1041,6 +1053,7 @@
         <div class="movie-info">
           <h3 class="movie-title">${escapeHtml(movie.movieName)}</h3>
           <p class="movie-director"><strong>导演：</strong>${escapeHtml(movie.director || '未知')}</p>
+          <p class="movie-actors"><strong>主演：</strong>${escapeHtml(movie.actors || '暂无信息')}</p>
           <p class="movie-year"><strong>年份：</strong>${movie.year || '未知'}</p>
           <p class="movie-genre"><strong>类型：</strong>${escapeHtml(movie.genre || '未知')}</p>
           <p class="movie-region"><strong>地区：</strong>${escapeHtml(movie.region || '未知')}</p>

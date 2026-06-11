@@ -77,4 +77,6 @@ public interface MovieMapper {
     Double getAveragePersonalRatingByMovie(@Param("movieId") Integer movieId);
     Integer getRatingCountFromCollections(@Param("movieId") Integer movieId);
 
+    int updateMovieActors(@Param("movieId") Integer movieId, @Param("actors") String actors);
+    List<MoviePublic> findAllMovies();
 }

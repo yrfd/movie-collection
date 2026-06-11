@@ -13,6 +13,7 @@ public class MoviePublic {
     private String posterUrl;
     private String genre;
     private String region;
+    private String actors;
     private Double avgRating;
     private Integer ratingCount;
     private Date createTime;
