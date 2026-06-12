@@ -2,6 +2,7 @@ package com.movie.entity;
 
 import lombok.Data;
 import java.util.Date;
+import java.util.List;
 
 @Data
 public class Comment {
@@ -19,4 +20,6 @@ public class Comment {
     private String username;
     private String movieName;
     private Double currentRating;
+    private String replyToUsername;
+    private List<Comment> replies;
 }

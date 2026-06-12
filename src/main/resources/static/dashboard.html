@@ -502,6 +502,34 @@
             <label class="form-label">私人笔记 <span style="font-size: 0.75rem; color: var(--gray-500);">（仅自己可见）</span></label>
             <textarea id="privateReview" class="form-textarea" placeholder="写下你的私人观影感受..." rows="4"></textarea>
           </div>
+          <div id="tmdbResults" style="max-height: 300px; overflow-y: auto;"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">所属文件夹</label>
+          <select id="categoryId" class="form-select">
+            <option value="">默认收藏</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">个人评分</label>
+          <div id="ratingStars"></div>
+          <input type="hidden" id="personalRating" value="0">
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">观影状态</label>
+          <select id="watchStatus" class="form-select">
+            <option value="想看">想看</option>
+            <option value="已看">已看</option>
+            <option value="不感兴趣">不感兴趣</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">私人影评</label>
+          <textarea id="privateReview" class="form-textarea" placeholder="写下你的私人观影感受（仅自己可见）"></textarea>
         </div>
       </form>
     </div>
@@ -1445,7 +1473,12 @@
     }
 
     try {
-      const result = await movieAPI.updateMovie(collectionId, movieData);
+      let result;
+      if (collectionId) {
+        result = await movieAPI.updateMovie(collectionId, movieData);
+      } else {
+        result = await movieAPI.addMovie(movieData);
+      }
       if (result.code === 200) {
         showToast('保存成功', 'success');
         closeMovieModal();
