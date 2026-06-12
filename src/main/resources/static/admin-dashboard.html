@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>管理员仪表盘 - 银幕记忆</title>
   <link rel="stylesheet" href="css/style.css">
+  <!-- Chart.js 图表库 -->
+  <script src="https://unpkg.com/chart.js@4.4.0/dist/chart.umd.js"></script>
   <style>
     .admin-container {
       max-width: 1400px;
@@ -44,9 +46,10 @@
       background: var(--primary);
       color: white;
     }
+    /* 统计卡片网格 */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 20px;
       margin-bottom: 30px;
     }
@@ -56,6 +59,11 @@
       padding: 20px;
       text-align: center;
       box-shadow: var(--shadow-sm);
+      transition: transform 0.2s;
+    }
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
     }
     .stat-number {
       font-size: 32px;
@@ -65,6 +73,122 @@
     .stat-label {
       color: var(--gray-500);
       margin-top: 8px;
+      font-size: 14px;
+    }
+    .stat-trend {
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .trend-up { color: #10b981; }
+    .trend-down { color: #ef4444; }
+    /* 预览区域 */
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin: 30px 0;
+    }
+    .preview-card {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .preview-card h4 {
+      margin: 0 0 16px 0;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .preview-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .preview-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .preview-list li:last-child {
+      border-bottom: none;
+    }
+    .rank-num {
+      width: 24px;
+      height: 24px;
+      background: var(--gray-100);
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 600;
+      margin-right: 12px;
+    }
+    .rank-1 { background: #ffd700; color: #fff; }
+    .rank-2 { background: #c0c0c0; color: #fff; }
+    .rank-3 { background: #cd7f32; color: #fff; }
+    .movie-title {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .rating-badge {
+      background: #fef3c7;
+      color: #d97706;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 12px;
+    }
+    /* 筛选区域 */
+    .admin-filters {
+      background: var(--white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .filter-group {
+      flex: 1;
+      min-width: 150px;
+    }
+    .filter-group label {
+      display: block;
+      font-size: 12px;
+      margin-bottom: 4px;
+      color: var(--gray-500);
+    }
+    .filter-group .form-input,
+    .filter-group .form-select {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid var(--gray-300);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+    }
+    /* 批量操作栏 */
+    .batch-bar {
+      background: var(--primary-light);
+      border-radius: var(--radius-md);
+      padding: 12px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
     }
     .data-table {
       background: var(--white);
@@ -75,6 +199,7 @@
     table {
       width: 100%;
       border-collapse: collapse;
+      min-width: 600px;
     }
     th, td {
       padding: 12px 16px;
@@ -84,6 +209,15 @@
     th {
       background: var(--gray-100);
       font-weight: 600;
+      cursor: pointer;
+      user-select: none;
+    }
+    th:hover {
+      background: var(--gray-200);
+    }
+    .sort-icon {
+      margin-left: 4px;
+      font-size: 10px;
     }
     .btn-danger {
       background: var(--danger);
@@ -109,6 +243,10 @@
       border-radius: var(--radius-sm);
       cursor: pointer;
     }
+    .btn-sm {
+      padding: 4px 10px;
+      font-size: 12px;
+    }
     .status-badge {
       display: inline-block;
       padding: 2px 8px;
@@ -122,6 +260,18 @@
     .status-disabled {
       background: #fee2e2;
       color: #dc2626;
+    }
+    .user-avatar-small {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
     }
     .confirm-modal {
       display: none;
@@ -146,6 +296,39 @@
       width: 90%;
       text-align: center;
     }
+    .detail-modal-content {
+      max-width: 500px;
+    }
+    .detail-row {
+      display: flex;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--gray-100);
+    }
+    .detail-label {
+      width: 100px;
+      font-weight: 500;
+      color: var(--gray-600);
+    }
+    .pagination-info {
+      text-align: center;
+      margin-top: 20px;
+      color: var(--gray-500);
+      font-size: 14px;
+    }
+    @media (max-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .preview-grid {
+        grid-template-columns: 1fr;
+      }
+      .admin-filters {
+        flex-direction: column;
+      }
+      .filter-group {
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -157,52 +340,411 @@
       <button class="admin-tab" data-tab="users">👥 用户管理</button>
       <button class="admin-tab" data-tab="movies">🎬 电影管理</button>
       <button class="admin-tab" data-tab="comments">💬 评论管理</button>
+      <button class="admin-tab" data-tab="system">⚙️ 系统设置</button>
     </div>
     <button class="btn btn-secondary" id="logoutBtn">退出登录</button>
   </div>
 
-  <!-- 仪表盘视图 -->
+  <!-- ==================== 仪表盘视图 ==================== -->
   <div id="dashboardView" class="tab-view">
     <div class="stats-grid" id="statsGrid"></div>
-    <div class="data-table">
-      <h3 style="padding: 16px; margin: 0;">近7天数据趋势</h3>
-      <canvas id="trendChart" width="800" height="300" style="max-width: 100%; padding: 16px;"></canvas>
+
+    <!-- 预览区域 -->
+    <div class="preview-grid" id="previewGrid">
+      <div class="preview-card">
+        <h4>🔥 热门电影 TOP5</h4>
+        <div id="hotMoviesList" class="preview-list">
+          <div style="text-align:center;padding:20px;">加载中...</div>
+        </div>
+      </div>
+      <div class="preview-card">
+        <h4>⭐ 活跃用户 TOP5</h4>
+        <div id="activeUsersList" class="preview-list">
+          <div style="text-align:center;padding:20px;">加载中...</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trend-section">
+      <h3 style="margin: 0 0 16px 0;">📈 近7天数据趋势</h3>
+      <div class="dual-chart-container" style="display: flex; flex-wrap: wrap; gap: 20px;">
+        <div class="chart-box" style="flex: 1; min-width: 280px; background: var(--white); border-radius: var(--radius-lg); padding: 16px;">
+          <h4 style="margin: 0 0 16px 0;">👥 新增用户趋势</h4>
+          <canvas id="userTrendChart" style="max-height: 280px;"></canvas>
+        </div>
+        <div class="chart-box" style="flex: 1; min-width: 280px; background: var(--white); border-radius: var(--radius-lg); padding: 16px;">
+          <h4 style="margin: 0 0 16px 0;">💬 新增评论趋势</h4>
+          <canvas id="commentTrendChart" style="max-height: 280px;"></canvas>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- 用户管理视图 -->
+  <!-- ==================== 用户管理视图 ==================== -->
   <div id="usersView" class="tab-view" style="display: none;">
+    <!-- 筛选区域 -->
+    <div class="admin-filters">
+      <div class="filter-group">
+        <label>🔍 搜索</label>
+        <input type="text" id="searchUser" class="form-input" placeholder="用户名/邮箱">
+      </div>
+      <div class="filter-group">
+        <label>📊 状态</label>
+        <select id="filterUserStatus" class="form-select">
+          <option value="">全部状态</option>
+          <option value="1">正常</option>
+          <option value="0">禁用</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>📅 排序</label>
+        <select id="filterUserSort" class="form-select">
+          <option value="id_desc">ID 降序</option>
+          <option value="id_asc">ID 升序</option>
+          <option value="movie_desc">收藏数最多</option>
+          <option value="comment_desc">评论数最多</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="searchUserBtn">搜索</button>
+      <button class="btn btn-secondary" id="resetUserBtn">重置</button>
+    </div>
+
+    <!-- 批量操作栏 -->
+    <div class="batch-bar" id="userBatchBar">
+      <label class="checkbox-label">
+        <input type="checkbox" id="selectAllUsers"> 全选
+      </label>
+      <span id="selectedUserCount">已选择 0 项</span>
+      <button class="btn btn-danger btn-sm" id="batchDeleteUsersBtn">🗑️ 批量删除</button>
+      <button class="btn btn-success btn-sm" id="exportUsersBtn">📎 导出数据</button>
+    </div>
+
     <div class="data-table">
-      <table>
+      <table id="usersTable">
         <thead>
-        <tr><th>ID</th><th>用户名</th><th>邮箱</th><th>注册时间</th><th>收藏数</th><th>评论数</th><th>状态</th><th>操作</th></tr>
+        <tr>
+          <th style="width: 40px;"><input type="checkbox" id="selectAllHeader"></th>
+          <th>ID</th>
+          <th>用户</th>
+          <th>邮箱</th>
+          <th>注册时间</th>
+          <th>收藏数</th>
+          <th>评论数</th>
+          <th>状态</th>
+          <th>操作</th>
+        </tr>
         </thead>
         <tbody id="usersTableBody"></tbody>
       </table>
     </div>
+    <div class="pagination-info" id="userPagination"></div>
   </div>
 
-  <!-- 电影管理视图 -->
+  <!-- ==================== 电影管理视图 ==================== -->
   <div id="moviesView" class="tab-view" style="display: none;">
+    <div class="admin-filters">
+      <div class="filter-group">
+        <label>🔍 搜索</label>
+        <input type="text" id="searchMovie" class="form-input" placeholder="电影名称">
+      </div>
+      <div class="filter-group">
+        <label>📊 类型</label>
+        <select id="filterMovieGenre" class="form-select">
+          <option value="">全部类型</option>
+          <option value="动作">动作</option>
+          <option value="喜剧">喜剧</option>
+          <option value="爱情">爱情</option>
+          <option value="科幻">科幻</option>
+          <option value="恐怖">恐怖</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>⭐ 最低评分</label>
+        <select id="filterMovieRating" class="form-select">
+          <option value="">不限</option>
+          <option value="4">4分以上</option>
+          <option value="3">3分以上</option>
+          <option value="2">2分以上</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="searchMovieBtn">搜索</button>
+      <button class="btn btn-secondary" id="resetMovieBtn">重置</button>
+    </div>
+
     <div class="data-table">
       <table>
         <thead>
-        <tr><th>ID</th><th>电影名称</th><th>导演</th><th>年份</th><th>类型</th><th>评分</th><th>评论数</th><th>收藏数</th><th>操作</th></tr>
+        <tr>
+          <th>ID</th>
+          <th>电影名称</th>
+          <th>导演</th>
+          <th>年份</th>
+          <th>类型</th>
+          <th>评分</th>
+          <th>评论数</th>
+          <th>收藏数</th>
+          <th>操作</th>
+        </tr>
         </thead>
         <tbody id="moviesTableBody"></tbody>
       </table>
     </div>
   </div>
 
-  <!-- 评论管理视图 -->
+  <!-- ==================== 评论管理视图 ==================== -->
   <div id="commentsView" class="tab-view" style="display: none;">
+    <div class="admin-filters">
+      <div class="filter-group">
+        <label>🔍 搜索</label>
+        <input type="text" id="searchComment" class="form-input" placeholder="用户/电影/内容">
+      </div>
+      <div class="filter-group">
+        <label>⭐ 最低评分</label>
+        <select id="filterCommentRating" class="form-select">
+          <option value="">不限</option>
+          <option value="4">4分以上</option>
+          <option value="3">3分以上</option>
+          <option value="2">2分以上</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" id="searchCommentBtn">搜索</button>
+      <button class="btn btn-secondary" id="resetCommentBtn">重置</button>
+    </div>
+
+    <div class="batch-bar" id="commentBatchBar">
+      <label class="checkbox-label">
+        <input type="checkbox" id="selectAllComments"> 全选
+      </label>
+      <span id="selectedCommentCount">已选择 0 项</span>
+      <button class="btn btn-danger btn-sm" id="batchDeleteCommentsBtn">🗑️ 批量删除</button>
+    </div>
+
     <div class="data-table">
       <table>
         <thead>
-        <tr><th>ID</th><th>用户</th><th>电影</th><th>评分</th><th>内容</th><th>时间</th><th>操作</th></tr>
+        <tr>
+          <th style="width: 40px;"><input type="checkbox" id="selectAllCommentsHeader"></th>
+          <th>ID</th>
+          <th>用户</th>
+          <th>电影</th>
+          <th>内容</th>
+          <th>时间</th>
+          <th>操作</th>
+        </tr>
         </thead>
         <tbody id="commentsTableBody"></tbody>
       </table>
+    </div>
+  </div>
+
+  <div id="systemView" class="tab-view" style="display: none;">
+    <div class="system-tabs" style="display: flex; gap: 12px; margin-bottom: 20px; border-bottom: 1px solid var(--gray-200); padding-bottom: 12px;">
+      <button class="system-subtab active" data-subtab="announcement">📢 公告管理</button>
+      <button class="system-subtab" data-subtab="carousel">🖼️ 轮播图管理</button>
+      <button class="system-subtab" data-subtab="logs">📋 操作日志</button>
+      <button class="system-subtab" data-subtab="config">⚙️ 系统配置</button>
+    </div>
+
+    <!-- 公告管理 -->
+    <div id="announcementSubtab" class="system-subtab-content active">
+      <div style="margin-bottom: 20px;">
+        <button class="btn btn-primary" id="addAnnouncementBtn">+ 添加公告</button>
+      </div>
+      <div class="data-table">
+        <table>
+          <thead>
+          <tr>
+            <th>ID</th>
+            <th>标题</th>
+            <th>内容</th>
+            <th>优先级</th>
+            <th>状态</th>
+            <th>创建时间</th>
+            <th>操作</th>
+          </tr>
+          </thead>
+          <tbody id="announcementTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 轮播图管理 -->
+    <div id="carouselSubtab" class="system-subtab-content" style="display: none;">
+      <div style="margin-bottom: 20px;">
+        <button class="btn btn-primary" id="addCarouselBtn">+ 添加轮播图</button>
+      </div>
+      <div class="data-table">
+        <table>
+          <thead>
+          <tr>
+            <th>ID</th>
+            <th>图片预览</th>
+            <th>标题</th>
+            <th>跳转链接</th>
+            <th>排序</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+          </thead>
+          <tbody id="carouselTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 操作日志 -->
+    <div id="logsSubtab" class="system-subtab-content" style="display: none;">
+      <div class="data-table">
+        <table>
+          <thead>
+          <tr>
+            <th>时间</th>
+            <th>管理员</th>
+            <th>操作类型</th>
+            <th>操作对象</th>
+            <th>详情</th>
+            <th>IP地址</th>
+          </tr>
+          </thead>
+          <tbody id="logsTableBody"></tbody>
+        </table>
+      </div>
+      <div id="logsPagination" class="pagination" style="margin-top: 20px;"></div>
+    </div>
+
+    <!-- 系统配置 -->
+    <div id="configSubtab" class="system-subtab-content" style="display: none;">
+      <div class="data-table">
+        <table>
+          <thead>
+          <tr>
+            <th>配置项</th>
+            <th>配置值</th>
+            <th>描述</th>
+            <th>操作</th>
+          </tr>
+          </thead>
+          <tbody id="configTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="announcementModal" class="modal">
+      <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+          <h3 class="modal-title" id="announcementModalTitle">添加公告</h3>
+          <button class="modal-close" id="closeAnnouncementModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="announcementId">
+
+          <div class="form-group">
+            <label class="form-label">标题</label>
+            <input type="text" id="announcementTitle" class="form-input" placeholder="请输入公告标题">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">内容</label>
+            <textarea id="announcementContent" class="form-textarea" rows="5" placeholder="请输入公告内容"></textarea>
+          </div>
+
+          <!-- ✅ 在这里添加目标用户选择 -->
+          <div class="form-group">
+            <label class="form-label">发送目标</label>
+            <select id="announcementTargetType" class="form-select">
+              <option value="all">全体用户</option>
+              <option value="user">指定用户</option>
+            </select>
+          </div>
+
+          <div id="targetUserGroup" style="display: none;">
+            <div class="form-group">
+              <label class="form-label">选择用户</label>
+              <div style="border: 1px solid var(--gray-300); border-radius: var(--radius-sm); max-height: 200px; overflow-y: auto;">
+                <div id="userCheckboxList" style="padding: 8px;">
+                  <!-- 用户复选框列表将动态加载到这里 -->
+                </div>
+              </div>
+              <span class="form-hint">勾选要发送公告的用户，可多选</span>
+              <div id="selectedUserDisplay" style="margin-top: 8px; font-size: 12px; color: var(--primary);"></div>
+            </div>
+          </div>
+          <!-- ✅ 目标用户选择结束 -->
+
+          <div class="form-group">
+            <label class="form-label">优先级（数字越大越靠前）</label>
+            <input type="number" id="announcementPriority" class="form-input" value="0">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">状态</label>
+            <select id="announcementStatus" class="form-select">
+              <option value="1">启用</option>
+              <option value="0">禁用</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="cancelAnnouncementBtn">取消</button>
+          <button class="btn btn-primary" id="saveAnnouncementBtn">保存</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 轮播图编辑模态框 -->
+    <div id="carouselModal" class="modal">
+      <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+          <h3 class="modal-title" id="carouselModalTitle">添加轮播图</h3>
+          <button class="modal-close" id="closeCarouselModalBtn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="carouselId">
+          <div class="form-group">
+            <label class="form-label">图片</label>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <div style="flex: 1;">
+                <input type="text" id="carouselImageUrl" class="form-input" placeholder="图片URL（或点击上传）" readonly>
+              </div>
+              <div>
+                <label class="btn btn-secondary" style="cursor: pointer; display: inline-block; padding: 10px 20px;">
+                  📁 选择图片
+                  <input type="file" id="carouselFileInput" accept="image/*" style="display: none;">
+                </label>
+              </div>
+            </div>
+            <div id="imagePreview" style="margin-top: 12px; display: none;">
+              <img id="previewImg" style="max-width: 100%; max-height: 150px; border-radius: 8px; object-fit: contain;">
+              <div style="margin-top: 8px;">
+                <button type="button" class="btn btn-danger btn-sm" id="clearImageBtn">清除图片</button>
+              </div>
+            </div>
+            <span class="form-hint" style="margin-top: 8px; display: block;">💡 支持点击"选择图片"从本地相册上传，或直接输入图片URL</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">标题（可选）</label>
+            <input type="text" id="carouselTitle" class="form-input" placeholder="请输入标题">
+          </div>
+          <div class="form-group">
+            <label class="form-label">跳转链接（可选）</label>
+            <input type="url" id="carouselLinkUrl" class="form-input" placeholder="https://example.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">排序（数字越小越靠前）</label>
+            <input type="number" id="carouselSortOrder" class="form-input" value="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">状态</label>
+            <select id="carouselStatus" class="form-select">
+              <option value="1">启用</option>
+              <option value="0">禁用</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="cancelCarouselBtn">取消</button>
+          <button class="btn btn-primary" id="saveCarouselBtn">保存</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -219,13 +761,38 @@
   </div>
 </div>
 
+<!-- 用户详情模态框 -->
+<div id="userDetailModal" class="modal confirm-modal">
+  <div class="confirm-modal-content detail-modal-content">
+    <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <h3 style="margin: 0;">用户详情</h3>
+      <button class="modal-close" id="closeUserDetailBtn" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+    </div>
+    <div id="userDetailContent"></div>
+  </div>
+</div>
+
 <script src="js/common.js"></script>
 <script>
   const API_BASE_URL = window.location.origin;
   let currentTab = 'dashboard';
-  let pendingAction = null;
+  let userChart = null;
+  let commentChart = null;
 
-  // 检查登录状态
+  // 用户管理变量
+  let allUsers = [];
+  let filteredUsers = [];
+  let selectedUserIds = new Set();
+  let currentUserPage = 1;
+  let userPageSize = 10;
+
+  // 评论管理变量
+  let allComments = [];
+  let filteredComments = [];
+  let selectedCommentIds = new Set();
+
+  // ==================== 通用函数 ====================
+
   async function checkAuth() {
     try {
       const response = await fetch(`${API_BASE_URL}/admin/check`);
@@ -238,151 +805,6 @@
     }
   }
 
-  // 加载仪表盘数据
-  async function loadDashboard() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/admin/dashboard`);
-      const result = await response.json();
-      if (result.code === 200 && result.data) {
-        const stats = result.data;
-        document.getElementById('statsGrid').innerHTML = `
-                    <div class="stat-card"><div class="stat-number">${stats.userCount || 0}</div><div class="stat-label">总用户数</div></div>
-                    <div class="stat-card"><div class="stat-number">${stats.movieCount || 0}</div><div class="stat-label">总电影数</div></div>
-                    <div class="stat-card"><div class="stat-number">${stats.commentCount || 0}</div><div class="stat-label">总评论数</div></div>
-                    <div class="stat-card"><div class="stat-number">${stats.collectionCount || 0}</div><div class="stat-label">总收藏数</div></div>
-                    <div class="stat-card"><div class="stat-number">${stats.todayNewUsers || 0}</div><div class="stat-label">今日新增用户</div></div>
-                    <div class="stat-card"><div class="stat-number">${stats.todayNewComments || 0}</div><div class="stat-label">今日新增评论</div></div>
-                `;
-      }
-    } catch (error) {
-      showToast('加载失败', 'error');
-    }
-  }
-
-  // 加载用户列表
-  async function loadUsers() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/admin/users`);
-      const result = await response.json();
-      if (result.code === 200 && result.data) {
-        const users = result.data;
-        document.getElementById('usersTableBody').innerHTML = users.map(user => `
-                    <tr>
-                        <td>${user.userId}</td>
-                        <td>${escapeHtml(user.username)}</td>
-                        <td>${escapeHtml(user.email)}</td>
-                        <td>${user.createTime ? new Date(user.createTime).toLocaleDateString() : '-'}</td>
-                        <td>${user.movieCount || 0}</td>
-                        <td>${user.commentCount || 0}</td>
-                        <td><span class="status-badge status-normal">正常</span></td>
-                        <td>
-                            <button class="btn-danger" onclick="deleteUser(${user.userId})">删除</button>
-                        </td>
-                    </tr>
-                `).join('');
-      }
-    } catch (error) {
-      showToast('加载失败', 'error');
-    }
-  }
-
-  // 加载电影列表
-  async function loadMovies() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/admin/movies`);
-      const result = await response.json();
-      if (result.code === 200 && result.data) {
-        const movies = result.data;
-        document.getElementById('moviesTableBody').innerHTML = movies.map(movie => `
-                    <tr>
-                        <td>${movie.movieId}</td>
-                        <td>${escapeHtml(movie.movieName)}</td>
-                        <td>${escapeHtml(movie.director || '-')}</td>
-                        <td>${movie.year || '-'}</td>
-                        <td>${escapeHtml(movie.genre || '-')}</td>
-                        <td>${movie.avgRating ? movie.avgRating.toFixed(1) : '-'}</td>
-                        <td>${movie.commentCount || 0}</td>
-                        <td>${movie.collectionCount || 0}</td>
-                        <td>
-                            <button class="btn-danger" onclick="deleteMovie(${movie.movieId})">删除</button>
-                        </td>
-                    </tr>
-                `).join('');
-      }
-    } catch (error) {
-      showToast('加载失败', 'error');
-    }
-  }
-
-  // 加载评论列表
-  async function loadComments() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/admin/comments`);
-      const result = await response.json();
-      if (result.code === 200 && result.data) {
-        const comments = result.data;
-        document.getElementById('commentsTableBody').innerHTML = comments.map(comment => `
-                    <tr>
-                        <td>${comment.commentId}</td>
-                        <td>${escapeHtml(comment.username)}</td>
-                        <td>${escapeHtml(comment.movieName)}</td>
-                        <td>${'⭐'.repeat(Math.floor(comment.rating))}</td>
-                        <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(comment.content)}</td>
-                        <td>${comment.createTime ? new Date(comment.createTime).toLocaleString() : '-'}</td>
-                        <td>
-                            <button class="btn-danger" onclick="deleteComment(${comment.commentId})">删除</button>
-                        </td>
-                    </tr>
-                `).join('');
-      }
-    } catch (error) {
-      showToast('加载失败', 'error');
-    }
-  }
-
-  // 删除用户
-  window.deleteUser = function(userId) {
-    showConfirm('确定要删除该用户吗？此操作不可恢复。', async () => {
-      const response = await fetch(`${API_BASE_URL}/admin/user/${userId}`, { method: 'DELETE' });
-      const result = await response.json();
-      if (result.code === 200) {
-        showToast('删除成功', 'success');
-        loadUsers();
-      } else {
-        showToast(result.message, 'error');
-      }
-    });
-  };
-
-  // 删除电影
-  window.deleteMovie = function(movieId) {
-    showConfirm('确定要删除该电影吗？关联的收藏和评论也会被删除。', async () => {
-      const response = await fetch(`${API_BASE_URL}/admin/movie/${movieId}`, { method: 'DELETE' });
-      const result = await response.json();
-      if (result.code === 200) {
-        showToast('删除成功', 'success');
-        loadMovies();
-      } else {
-        showToast(result.message, 'error');
-      }
-    });
-  };
-
-  // 删除评论
-  window.deleteComment = function(commentId) {
-    showConfirm('确定要删除该评论吗？', async () => {
-      const response = await fetch(`${API_BASE_URL}/admin/comment/${commentId}`, { method: 'DELETE' });
-      const result = await response.json();
-      if (result.code === 200) {
-        showToast('删除成功', 'success');
-        loadComments();
-      } else {
-        showToast(result.message, 'error');
-      }
-    });
-  };
-
-  // 确认对话框
   function showConfirm(message, onConfirm) {
     const modal = document.getElementById('confirmModal');
     document.getElementById('confirmMessage').textContent = message;
@@ -409,32 +831,1319 @@
     cancelBtn.addEventListener('click', handleCancel);
   }
 
-  // 退出登录
-  document.getElementById('logoutBtn').addEventListener('click', async () => {
-    await fetch(`${API_BASE_URL}/admin/logout`, { method: 'POST' });
-    window.location.href = 'admin-login.html';
-  });
+  // ==================== 仪表盘功能 ====================
 
-  // 标签页切换
-  document.querySelectorAll('.admin-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      currentTab = tab.dataset.tab;
+  async function loadDashboard() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/dashboard`);
+      const result = await response.json();
+      if (result.code === 200 && result.data) {
+        const stats = result.data;
 
-      document.querySelectorAll('.tab-view').forEach(view => view.style.display = 'none');
-      document.getElementById(`${currentTab}View`).style.display = 'block';
+        // 计算环比增长（模拟数据，实际需要后端支持）
+        const userGrowth = ((stats.todayNewUsers || 0) - (stats.yesterdayNewUsers || 0)) / (stats.yesterdayNewUsers || 1) * 100;
+        const commentGrowth = ((stats.todayNewComments || 0) - (stats.yesterdayNewComments || 0)) / (stats.yesterdayNewComments || 1) * 100;
 
-      if (currentTab === 'dashboard') loadDashboard();
-      else if (currentTab === 'users') loadUsers();
-      else if (currentTab === 'movies') loadMovies();
-      else if (currentTab === 'comments') loadComments();
+        document.getElementById('statsGrid').innerHTML = `
+          <div class="stat-card">
+            <div class="stat-number">${stats.userCount || 0}</div>
+            <div class="stat-label">总用户数</div>
+            <div class="stat-trend ${userGrowth >= 0 ? 'trend-up' : 'trend-down'}">
+              ${userGrowth >= 0 ? '↑' : '↓'} 较昨日 ${Math.abs(userGrowth).toFixed(1)}%
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${stats.movieCount || 0}</div>
+            <div class="stat-label">总电影数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${stats.commentCount || 0}</div>
+            <div class="stat-label">总评论数</div>
+            <div class="stat-trend ${commentGrowth >= 0 ? 'trend-up' : 'trend-down'}">
+              ${commentGrowth >= 0 ? '↑' : '↓'} 较昨日 ${Math.abs(commentGrowth).toFixed(1)}%
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${stats.collectionCount || 0}</div>
+            <div class="stat-label">总收藏数</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${stats.todayNewUsers || 0}</div>
+            <div class="stat-label">今日新增用户</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-number">${stats.todayNewComments || 0}</div>
+            <div class="stat-label">今日新增评论</div>
+          </div>
+        `;
+
+        renderTrendCharts(stats);
+      }
+    } catch (error) {
+      console.error('加载仪表盘失败:', error);
+      showToast('加载失败', 'error');
+    }
+  }
+
+  function renderTrendCharts(stats) {
+    const userDailyStats = stats.userDailyStats || [];
+    const commentDailyStats = stats.commentDailyStats || [];
+
+    if (userDailyStats.length === 0 && commentDailyStats.length === 0) {
+      console.warn('没有每日统计数据');
+      return;
+    }
+
+    const dates = userDailyStats.map(item => item.date);
+    const userCounts = userDailyStats.map(item => item.count);
+    const commentCounts = commentDailyStats.map(item => item.count);
+
+    // 用户趋势图表
+    const userCtx = document.getElementById('userTrendChart').getContext('2d');
+    if (userChart) userChart.destroy();
+    userChart = new Chart(userCtx, {
+      type: 'line',
+      data: { labels: dates, datasets: [{ label: '新增用户数', data: userCounts, borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.1)', borderWidth: 2, fill: true, tension: 0.3, pointBackgroundColor: '#6366f1', pointRadius: 4 }] },
+      options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw} 人` } } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
     });
+
+    // 评论趋势图表
+    const commentCtx = document.getElementById('commentTrendChart').getContext('2d');
+    if (commentChart) commentChart.destroy();
+    commentChart = new Chart(commentCtx, {
+      type: 'line',
+      data: { labels: dates, datasets: [{ label: '新增评论数', data: commentCounts, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.1)', borderWidth: 2, fill: true, tension: 0.3, pointBackgroundColor: '#10b981', pointRadius: 4 }] },
+      options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.raw} 条` } } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+    });
+  }
+
+  async function loadHotMovies() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/stats/hot-movies?limit=5`);
+      const result = await response.json();
+      if (result.code === 200 && result.data && result.data.length > 0) {
+        document.getElementById('hotMoviesList').innerHTML = result.data.map((movie, idx) => `
+          <li>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="rank-num ${idx === 0 ? 'rank-1' : idx === 1 ? 'rank-2' : idx === 2 ? 'rank-3' : ''}">${idx + 1}</span>
+              <span class="movie-title">${escapeHtml(movie.movieName)}</span>
+            </div>
+            <div style="display: flex; gap: 12px;">
+              <span class="rating-badge">⭐ ${(movie.avgRating || 0).toFixed(1)}</span>
+              <span>💬 ${movie.commentCount || 0}</span>
+            </div>
+          </li>
+        `).join('');
+      } else {
+        document.getElementById('hotMoviesList').innerHTML = '<li style="text-align:center;color:var(--gray-400);">暂无热门电影</li>';
+      }
+    } catch (error) {
+      document.getElementById('hotMoviesList').innerHTML = '<li style="text-align:center;color:var(--gray-400);">加载失败</li>';
+    }
+  }
+
+  async function loadActiveUsers() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/stats/active-users?limit=5`);
+      const result = await response.json();
+      if (result.code === 200 && result.data && result.data.length > 0) {
+        document.getElementById('activeUsersList').innerHTML = result.data.map((user, idx) => `
+          <li>
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="user-avatar-small">${(user.username || 'U')[0].toUpperCase()}</div>
+              <span style="flex:1;">${escapeHtml(user.username)}</span>
+            </div>
+            <div style="display: flex; gap: 12px;">
+              <span>📚 ${user.movieCount || 0}</span>
+              <span>💬 ${user.commentCount || 0}</span>
+            </div>
+          </li>
+        `).join('');
+      } else {
+        document.getElementById('activeUsersList').innerHTML = '<li style="text-align:center;color:var(--gray-400);">暂无活跃用户</li>';
+      }
+    } catch (error) {
+      document.getElementById('activeUsersList').innerHTML = '<li style="text-align:center;color:var(--gray-400);">加载失败</li>';
+    }
+  }
+
+  // ==================== 用户管理功能 ====================
+
+  async function loadUsers() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users`);
+      const result = await response.json();
+      if (result.code === 200 && result.data) {
+        allUsers = result.data;
+        filterAndRenderUsers();
+      }
+    } catch (error) {
+      showToast('加载用户失败', 'error');
+    }
+  }
+
+  function filterAndRenderUsers() {
+    const searchTerm = document.getElementById('searchUser')?.value.toLowerCase() || '';
+    const statusFilter = document.getElementById('filterUserStatus')?.value || '';
+    const sortBy = document.getElementById('filterUserSort')?.value || 'id_desc';
+
+    filteredUsers = allUsers.filter(user => {
+      const matchSearch = !searchTerm || user.username.toLowerCase().includes(searchTerm) || (user.email && user.email.toLowerCase().includes(searchTerm));
+      const matchStatus = !statusFilter || (statusFilter === '1' ? user.status !== 0 : user.status === 0);
+      return matchSearch && matchStatus;
+    });
+
+    // 排序
+    filteredUsers.sort((a, b) => {
+      switch(sortBy) {
+        case 'id_asc': return a.userId - b.userId;
+        case 'movie_desc': return (b.movieCount || 0) - (a.movieCount || 0);
+        case 'comment_desc': return (b.commentCount || 0) - (a.commentCount || 0);
+        default: return b.userId - a.userId;
+      }
+    });
+
+    renderUsersTable();
+  }
+
+  function renderUsersTable() {
+    const start = (currentUserPage - 1) * userPageSize;
+    const pageUsers = filteredUsers.slice(start, start + userPageSize);
+    const tbody = document.getElementById('usersTableBody');
+
+    if (pageUsers.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">暂无用户数据</td></tr>';
+      document.getElementById('userPagination').innerHTML = '';
+      return;
+    }
+
+    tbody.innerHTML = pageUsers.map(user => `
+      <tr>
+        <td><input type="checkbox" class="user-checkbox" data-id="${user.userId}" ${selectedUserIds.has(user.userId) ? 'checked' : ''}></td>
+        <td>${user.userId}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="user-avatar-small">${(user.username || 'U')[0].toUpperCase()}</div>
+            <span style="cursor:pointer; color: var(--primary);" onclick="showUserDetail(${user.userId})">${escapeHtml(user.username)}</span>
+          </div>
+        </td>
+        <td>${escapeHtml(user.email || '-')}</td>
+        <td>${user.createTime ? new Date(user.createTime).toLocaleDateString() : '-'}</td>
+        <td>${user.movieCount || 0}</td>
+        <td>${user.commentCount || 0}</td>
+        <td><span class="status-badge ${user.status !== 0 ? 'status-normal' : 'status-disabled'}">${user.status !== 0 ? '正常' : '禁用'}</span></td>
+        <td>
+          <button class="btn-warning btn-sm" onclick="toggleUserStatus(${user.userId}, ${user.status !== 0 ? 0 : 1})">${user.status !== 0 ? '禁用' : '启用'}</button>
+          <button class="btn-danger btn-sm" onclick="deleteUser(${user.userId})">删除</button>
+        </td>
+      </tr>
+    `).join('');
+
+    // 绑定复选框事件
+    document.querySelectorAll('.user-checkbox').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const id = parseInt(e.target.dataset.id);
+        if (e.target.checked) {
+          selectedUserIds.add(id);
+        } else {
+          selectedUserIds.delete(id);
+        }
+        updateUserSelectionUI();
+      });
+    });
+
+    renderUserPagination();
+    updateUserSelectionUI();
+  }
+
+  function renderUserPagination() {
+    const totalPages = Math.ceil(filteredUsers.length / userPageSize);
+    if (totalPages <= 1) {
+      document.getElementById('userPagination').innerHTML = '';
+      return;
+    }
+    let html = '';
+    for (let i = 1; i <= totalPages; i++) {
+      html += `<button class="page-btn ${i === currentUserPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+    }
+    document.getElementById('userPagination').innerHTML = html;
+    document.querySelectorAll('#userPagination .page-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentUserPage = parseInt(btn.dataset.page);
+        renderUsersTable();
+      });
+    });
+  }
+
+  function updateUserSelectionUI() {
+    document.getElementById('selectedUserCount').textContent = `已选择 ${selectedUserIds.size} 项`;
+    const selectAllCheckbox = document.getElementById('selectAllUsers');
+    const selectAllHeader = document.getElementById('selectAllHeader');
+    if (selectAllCheckbox) selectAllCheckbox.checked = selectedUserIds.size === filteredUsers.length && filteredUsers.length > 0;
+    if (selectAllHeader) selectAllHeader.checked = selectedUserIds.size === filteredUsers.length && filteredUsers.length > 0;
+  }
+
+  window.showUserDetail = async function(userId) {
+    const user = allUsers.find(u => u.userId === userId);
+    if (!user) return;
+
+    document.getElementById('userDetailContent').innerHTML = `
+      <div class="detail-row"><div class="detail-label">用户ID</div><div>${user.userId}</div></div>
+      <div class="detail-row"><div class="detail-label">用户名</div><div>${escapeHtml(user.username)}</div></div>
+      <div class="detail-row"><div class="detail-label">邮箱</div><div>${escapeHtml(user.email || '-')}</div></div>
+      <div class="detail-row"><div class="detail-label">注册时间</div><div>${user.createTime ? new Date(user.createTime).toLocaleString() : '-'}</div></div>
+      <div class="detail-row"><div class="detail-label">收藏数量</div><div>${user.movieCount || 0}</div></div>
+      <div class="detail-row"><div class="detail-label">评论数量</div><div>${user.commentCount || 0}</div></div>
+      <div class="detail-row"><div class="detail-label">账号状态</div><div><span class="status-badge ${user.status !== 0 ? 'status-normal' : 'status-disabled'}">${user.status !== 0 ? '正常' : '禁用'}</span></div></div>
+    `;
+    document.getElementById('userDetailModal').classList.add('show');
+  };
+
+  window.toggleUserStatus = async function(userId, newStatus) {
+    const action = newStatus === 0 ? 'disable' : 'enable';
+    showConfirm(`确定要${action === 'disable' ? '禁用' : '启用'}该用户吗？`, async () => {
+      const response = await fetch(`${API_BASE_URL}/admin/user/${userId}/${action}`, { method: 'PUT' });
+      const result = await response.json();
+      if (result.code === 200) {
+        showToast(result.message, 'success');
+        await loadUsers();
+      } else {
+        showToast(result.message, 'error');
+      }
+    });
+  };
+
+  window.deleteUser = function(userId) {
+    showConfirm('确定要删除该用户吗？此操作不可恢复。', async () => {
+      const response = await fetch(`${API_BASE_URL}/admin/user/${userId}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (result.code === 200) {
+        showToast('删除成功', 'success');
+        selectedUserIds.delete(userId);
+        await loadUsers();
+      } else {
+        showToast(result.message, 'error');
+      }
+    });
+  };
+
+  async function batchDeleteUsers() {
+    if (selectedUserIds.size === 0) {
+      showToast('请先选择要删除的用户', 'warning');
+      return;
+    }
+    showConfirm(`确定要删除 ${selectedUserIds.size} 个用户吗？此操作不可恢复。`, async () => {
+      let success = 0, fail = 0;
+      for (const userId of selectedUserIds) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/admin/user/${userId}`, { method: 'DELETE' });
+          const result = await response.json();
+          if (result.code === 200) success++;
+          else fail++;
+        } catch (e) { fail++; }
+      }
+      showToast(`删除完成：成功 ${success}，失败 ${fail}`, success > 0 ? 'success' : 'error');
+      selectedUserIds.clear();
+      await loadUsers();
+    });
+  }
+
+  async function exportUsers() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users/export`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `users_${new Date().toISOString().slice(0,19)}.csv`;
+      a.click();
+      showToast('导出成功', 'success');
+    } catch (error) {
+      showToast('导出失败', 'error');
+    }
+  }
+
+  // ==================== 电影管理功能 ====================
+
+  async function loadMovies() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/movies`);
+      const result = await response.json();
+      if (result.code === 200 && result.data) {
+        renderMoviesTable(result.data);
+      }
+    } catch (error) {
+      showToast('加载电影失败', 'error');
+    }
+  }
+
+  function renderMoviesTable(movies) {
+    const searchTerm = document.getElementById('searchMovie')?.value.toLowerCase() || '';
+    const genreFilter = document.getElementById('filterMovieGenre')?.value || '';
+    const ratingFilter = document.getElementById('filterMovieRating')?.value || '';
+
+    let filtered = movies.filter(movie => {
+      const matchSearch = !searchTerm || movie.movieName.toLowerCase().includes(searchTerm);
+      const matchGenre = !genreFilter || (movie.genre && movie.genre.includes(genreFilter));
+      const matchRating = !ratingFilter || (movie.avgRating || 0) >= parseFloat(ratingFilter);
+      return matchSearch && matchGenre && matchRating;
+    });
+
+    const tbody = document.getElementById('moviesTableBody');
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">暂无电影数据</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filtered.map(movie => `
+      <tr>
+        <td>${movie.movieId}</td>
+        <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(movie.movieName)}</td>
+        <td>${escapeHtml(movie.director || '-')}</td>
+        <td>${movie.year || '-'}</td>
+        <td>${escapeHtml(movie.genre || '-')}</td>
+        <td>${movie.avgRating ? movie.avgRating.toFixed(1) : '-'}</td>
+        <td>${movie.commentCount || 0}</td>
+        <td>${movie.collectionCount || 0}</td>
+        <td><button class="btn-danger btn-sm" onclick="deleteMovie(${movie.movieId})">删除</button></td>
+      </tr>
+    `).join('');
+  }
+
+  window.deleteMovie = function(movieId) {
+    showConfirm('确定要删除该电影吗？关联数据也会被删除。', async () => {
+      const response = await fetch(`${API_BASE_URL}/admin/movie/${movieId}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (result.code === 200) {
+        showToast('删除成功', 'success');
+        await loadMovies();
+      } else {
+        showToast(result.message, 'error');
+      }
+    });
+  };
+
+  // ==================== 评论管理功能 ====================
+
+  async function loadComments() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/comments`);
+      const result = await response.json();
+      console.log('评论数据响应:', result);  // 调试日志
+
+      if (result.code === 200 && result.data) {
+        allComments = result.data;
+        filteredComments = [...allComments];
+        renderCommentsTable();
+      } else {
+        console.error('加载评论失败:', result.message);
+        showToast(result.message || '加载评论失败', 'error');
+        document.getElementById('commentsTableBody').innerHTML = '<tr><td colspan="8" style="text-align:center;">加载失败，请重试</td></tr>';
+      }
+    } catch (error) {
+      console.error('加载评论失败:', error);
+      showToast('加载评论失败', 'error');
+      document.getElementById('commentsTableBody').innerHTML = '<tr><td colspan="8" style="text-align:center;">网络错误，请检查连接</td></tr>';
+    }
+  }
+
+  function filterAndRenderComments() {
+    const searchTerm = document.getElementById('searchComment')?.value.toLowerCase() || '';
+    const ratingFilter = document.getElementById('filterCommentRating')?.value || '';
+
+    filteredComments = allComments.filter(comment => {
+      const matchSearch = !searchTerm ||
+              (comment.username && comment.username.toLowerCase().includes(searchTerm)) ||
+              (comment.movieName && comment.movieName.toLowerCase().includes(searchTerm)) ||
+              (comment.content && comment.content.toLowerCase().includes(searchTerm));
+      const matchRating = !ratingFilter || (comment.rating || 0) >= parseFloat(ratingFilter);
+      return matchSearch && matchRating;
+    });
+
+    renderCommentsTable();
+  }
+
+  function renderCommentsTable() {
+    const tbody = document.getElementById('commentsTableBody');
+
+    if (!filteredComments || filteredComments.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 40px;">暂无评论数据</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = filteredComments.map(comment => {
+      return `
+            <tr>
+                <td style="width: 40px; text-align: center;">
+                    <input type="checkbox" class="comment-checkbox" data-id="${comment.commentId}">
+                </td>
+                <td>${comment.commentId}</td>
+                <td>${escapeHtml(comment.username || '匿名用户')}</td>
+                <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(comment.movieName || '')}">
+                    ${escapeHtml(comment.movieName || '未知电影')}
+                </td>
+                <td style="max-width: 350px; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(comment.content || '')}">
+                    ${escapeHtml(comment.content || '暂无内容')}
+                </td>
+                <td style="white-space: nowrap;">${comment.createTime ? new Date(comment.createTime).toLocaleString() : '-'}</td>
+                <td>
+                    <button class="btn-danger btn-sm" onclick="deleteComment(${comment.commentId})">删除</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // 重新绑定复选框事件
+    document.querySelectorAll('.comment-checkbox').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        const id = parseInt(e.target.dataset.id);
+        if (e.target.checked) {
+          selectedCommentIds.add(id);
+        } else {
+          selectedCommentIds.delete(id);
+        }
+        updateCommentSelectionUI();
+      });
+    });
+
+    updateCommentSelectionUI();
+  }
+
+  function updateCommentSelectionUI() {
+    const countSpan = document.getElementById('selectedCommentCount');
+    if (countSpan) {
+      countSpan.textContent = `已选择 ${selectedCommentIds.size} 项`;
+    }
+    const selectAll = document.getElementById('selectAllComments');
+    if (selectAll && filteredComments.length > 0) {
+      selectAll.checked = selectedCommentIds.size === filteredComments.length;
+    }
+  }
+
+  window.deleteComment = function(commentId) {
+    showConfirm('确定要删除这条评论吗？', async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/admin/comment/${commentId}`, { method: 'DELETE' });
+        const result = await response.json();
+        if (result.code === 200) {
+          showToast('删除成功', 'success');
+          selectedCommentIds.delete(commentId);
+          await loadComments();
+        } else {
+          showToast(result.message || '删除失败', 'error');
+        }
+      } catch (error) {
+        console.error('删除评论失败:', error);
+        showToast('删除失败', 'error');
+      }
+    });
+  };
+
+  async function batchDeleteComments() {
+    if (selectedCommentIds.size === 0) {
+      showToast('请先选择要删除的评论', 'warning');
+      return;
+    }
+
+    showConfirm(`确定要删除 ${selectedCommentIds.size} 条评论吗？`, async () => {
+      let success = 0;
+      let fail = 0;
+
+      for (const commentId of selectedCommentIds) {
+        try {
+          const response = await fetch(`${API_BASE_URL}/admin/comment/${commentId}`, { method: 'DELETE' });
+          const result = await response.json();
+          if (result.code === 200) {
+            success++;
+          } else {
+            fail++;
+          }
+        } catch (e) {
+          fail++;
+        }
+      }
+
+      showToast(`删除完成：成功 ${success} 条，失败 ${fail} 条`, success > 0 ? 'success' : 'error');
+      selectedCommentIds.clear();
+      await loadComments();
+    });
+  }
+
+  // ==================== 事件绑定 ====================
+
+  function bindEvents() {
+    // 标签页切换
+    document.querySelectorAll('.admin-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        currentTab = tab.dataset.tab;
+
+        document.querySelectorAll('.tab-view').forEach(view => view.style.display = 'none');
+        document.getElementById(`${currentTab}View`).style.display = 'block';
+
+        if (currentTab === 'dashboard') {
+          loadDashboard();
+          loadHotMovies();
+          loadActiveUsers();
+        } else if (currentTab === 'users') {
+          loadUsers();
+        } else if (currentTab === 'movies') {
+          loadMovies();
+        } else if (currentTab === 'comments') {
+          loadComments();
+        } else if (currentTab === 'system') {
+          // 初始化系统设置子标签
+          initSystemTabs();
+          // 默认加载公告数据
+          loadAnnouncements();
+        }
+      });
+    });
+
+    // 用户筛选
+    document.getElementById('searchUserBtn')?.addEventListener('click', () => { currentUserPage = 1; filterAndRenderUsers(); });
+    document.getElementById('resetUserBtn')?.addEventListener('click', () => {
+      document.getElementById('searchUser').value = '';
+      document.getElementById('filterUserStatus').value = '';
+      document.getElementById('filterUserSort').value = 'id_desc';
+      currentUserPage = 1;
+      filterAndRenderUsers();
+    });
+    document.getElementById('selectAllUsers')?.addEventListener('change', (e) => {
+      filteredUsers.forEach(user => {
+        if (e.target.checked) selectedUserIds.add(user.userId);
+        else selectedUserIds.delete(user.userId);
+      });
+      renderUsersTable();
+    });
+    document.getElementById('batchDeleteUsersBtn')?.addEventListener('click', batchDeleteUsers);
+    document.getElementById('exportUsersBtn')?.addEventListener('click', exportUsers);
+
+    // 电影筛选
+    document.getElementById('searchMovieBtn')?.addEventListener('click', loadMovies);
+    document.getElementById('resetMovieBtn')?.addEventListener('click', () => {
+      document.getElementById('searchMovie').value = '';
+      document.getElementById('filterMovieGenre').value = '';
+      document.getElementById('filterMovieRating').value = '';
+      loadMovies();
+    });
+
+    // 评论筛选
+    document.getElementById('searchCommentBtn')?.addEventListener('click', filterAndRenderComments);
+    document.getElementById('resetCommentBtn')?.addEventListener('click', () => {
+      document.getElementById('searchComment').value = '';
+      document.getElementById('filterCommentRating').value = '';
+      filterAndRenderComments();
+    });
+    document.getElementById('selectAllComments')?.addEventListener('change', (e) => {
+      filteredComments.forEach(comment => {
+        if (e.target.checked) selectedCommentIds.add(comment.commentId);
+        else selectedCommentIds.delete(comment.commentId);
+      });
+      renderCommentsTable();
+    });
+    document.getElementById('batchDeleteCommentsBtn')?.addEventListener('click', batchDeleteComments);
+
+    // 退出登录
+    document.getElementById('logoutBtn').addEventListener('click', async () => {
+      await fetch(`${API_BASE_URL}/admin/logout`, { method: 'POST' });
+      window.location.href = 'admin-login.html';
+    });
+
+    // 关闭用户详情模态框
+    document.getElementById('closeUserDetailBtn')?.addEventListener('click', () => {
+      document.getElementById('userDetailModal').classList.remove('show');
+    });
+
+    // ✅ 新增：公告管理按钮事件
+    document.getElementById('addAnnouncementBtn')?.addEventListener('click', () => openAnnouncementModal(null));
+    document.getElementById('closeAnnouncementModalBtn')?.addEventListener('click', closeAnnouncementModal);
+    document.getElementById('cancelAnnouncementBtn')?.addEventListener('click', closeAnnouncementModal);
+    document.getElementById('saveAnnouncementBtn')?.addEventListener('click', saveAnnouncement);
+
+    // ✅ 新增：轮播图管理按钮事件
+    document.getElementById('addCarouselBtn')?.addEventListener('click', () => openCarouselModal(null));
+    document.getElementById('closeCarouselModalBtn')?.addEventListener('click', closeCarouselModal);
+    document.getElementById('cancelCarouselBtn')?.addEventListener('click', closeCarouselModal);
+    document.getElementById('saveCarouselBtn')?.addEventListener('click', saveCarousel);
+  }
+
+  // ==================== 系统设置功能 ====================
+
+  // 公告管理
+  let announcements = [];
+  let selectedUsers = [];
+
+  async function loadAnnouncements() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/system/announcements`);
+      const result = await response.json();
+      if (result.code === 200) {
+        announcements = result.data || [];
+        renderAnnouncements();
+      }
+    } catch (error) {
+      console.error('加载公告失败:', error);
+    }
+  }
+
+  function renderAnnouncements() {
+    const tbody = document.getElementById('announcementTableBody');
+    if (!announcements || announcements.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">暂无公告数据</td></tr>';
+      return;
+    }
+    tbody.innerHTML = announcements.map(item => `
+        <tr>
+            <td>${item.id}</td>
+            <td style="max-width: 200px;">${escapeHtml(item.title)}</td>
+            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(item.content)}</td>
+            <td>${item.priority || 0}</td>
+            <td><span class="status-badge ${item.isActive == 1 ? 'status-normal' : 'status-disabled'}">${item.isActive == 1 ? '启用' : '禁用'}</span></td>
+            <td>${item.createTime ? new Date(item.createTime).toLocaleString() : '-'}</td>
+            <td>
+                <button class="btn-warning btn-sm" onclick="editAnnouncement(${item.id})">编辑</button>
+                <button class="btn-danger btn-sm" onclick="deleteAnnouncement(${item.id})">删除</button>
+            </td>
+        </tr>
+    `).join('');
+  }
+
+  async function openAnnouncementModal(id) {
+    // 重置表单
+    document.getElementById('announcementId').value = '';
+    document.getElementById('announcementTitle').value = '';
+    document.getElementById('announcementContent').value = '';
+    document.getElementById('announcementPriority').value = 0;
+    document.getElementById('announcementStatus').value = 1;
+
+    // 重置目标用户选择
+    const targetTypeSelect = document.getElementById('announcementTargetType');
+    const targetUserGroup = document.getElementById('targetUserGroup');
+    if (targetTypeSelect) {
+      targetTypeSelect.value = 'all';
+      targetUserGroup.style.display = 'none';
+    }
+    clearSelectedUsers();
+
+    if (id) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/admin/system/announcements`);
+        const result = await response.json();
+        if (result.code === 200) {
+          const item = result.data.find(a => a.id === id);
+          if (item) {
+            document.getElementById('announcementModalTitle').textContent = '编辑公告';
+            document.getElementById('announcementId').value = item.id;
+            document.getElementById('announcementTitle').value = item.title;
+            document.getElementById('announcementContent').value = item.content;
+            document.getElementById('announcementPriority').value = item.priority || 0;
+            document.getElementById('announcementStatus').value = item.isActive;
+
+            // 设置目标用户
+            if (item.targetType === 'user' && item.targetIds) {
+              targetTypeSelect.value = 'user';
+              targetUserGroup.style.display = 'block';
+
+              // 等待用户列表加载完成后设置选中状态
+              await loadUserListForAnnouncement();
+
+              const targetIdArray = item.targetIds.split(',');
+              selectedUsers = [];
+              document.querySelectorAll('.user-select-checkbox').forEach(checkbox => {
+                if (targetIdArray.includes(checkbox.value)) {
+                  checkbox.checked = true;
+                  selectedUsers.push({
+                    id: checkbox.value,
+                    name: checkbox.dataset.name
+                  });
+                }
+              });
+              updateSelectedUsersDisplay();
+            }
+          }
+        }
+      } catch (error) {
+        console.error('加载公告数据失败:', error);
+      }
+    } else {
+      document.getElementById('announcementModalTitle').textContent = '添加公告';
+    }
+
+    document.getElementById('announcementModal').classList.add('show');
+  }
+
+  async function saveAnnouncement() {
+    // 获取发送目标类型
+    const targetTypeSelect = document.getElementById('announcementTargetType');
+    const targetType = targetTypeSelect ? targetTypeSelect.value : 'all';
+
+    let targetIds = null;
+    if (targetType === 'user') {
+      // 获取选中的用户ID
+      const selectedCheckboxes = document.querySelectorAll('.user-select-checkbox:checked');
+      if (selectedCheckboxes.length === 0) {
+        showToast('请选择要发送的用户', 'error');
+        return;
+      }
+      targetIds = Array.from(selectedCheckboxes).map(cb => cb.value).join(',');
+    }
+
+    const data = {
+      id: document.getElementById('announcementId').value || null,
+      title: document.getElementById('announcementTitle').value,
+      content: document.getElementById('announcementContent').value,
+      priority: parseInt(document.getElementById('announcementPriority').value),
+      isActive: parseInt(document.getElementById('announcementStatus').value),
+      targetType: targetType,      // ✅ 添加
+      targetIds: targetIds          // ✅ 添加
+    };
+
+    // 调试日志
+    console.log('保存公告数据:', data);
+
+    if (!data.title) {
+      showToast('请输入公告标题', 'error');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/system/announcement`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (result.code === 200) {
+        showToast('保存成功', 'success');
+        closeAnnouncementModal();
+        await loadAnnouncements();
+      } else {
+        showToast(result.message, 'error');
+      }
+    } catch (error) {
+      console.error('保存失败:', error);
+      showToast('保存失败', 'error');
+    }
+  }
+  function bindAnnouncementTargetEvents() {
+    const targetTypeSelect = document.getElementById('announcementTargetType');
+    const targetUserGroup = document.getElementById('targetUserGroup');
+
+    if (targetTypeSelect) {
+      targetTypeSelect.addEventListener('change', function() {
+        if (this.value === 'user') {
+          targetUserGroup.style.display = 'block';
+          loadUserListForAnnouncement();
+        } else {
+          targetUserGroup.style.display = 'none';
+          clearSelectedUsers();
+        }
+      });
+    }
+  }
+
+  window.editAnnouncement = function(id) {
+    openAnnouncementModal(id);
+  };
+
+  window.deleteAnnouncement = async function(id) {
+    if (!confirm('确定要删除该公告吗？')) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/system/announcement/${id}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (result.code === 200) {
+        showToast('删除成功', 'success');
+        await loadAnnouncements();
+      } else {
+        showToast(result.message, 'error');
+      }
+    } catch (error) {
+      showToast('删除失败', 'error');
+    }
+  };
+
+  function closeAnnouncementModal() {
+    document.getElementById('announcementModal').classList.remove('show');
+  }
+
+  // 轮播图管理
+  let carousels = [];
+
+  async function loadCarousels() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/system/carousels`);
+      const result = await response.json();
+      if (result.code === 200) {
+        carousels = result.data || [];
+        renderCarousels();
+      }
+    } catch (error) {
+      console.error('加载轮播图失败:', error);
+    }
+  }
+
+  function renderCarousels() {
+    const tbody = document.getElementById('carouselTableBody');
+    if (!carousels || carousels.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">暂无轮播图数据</td></tr>';
+      return;
+    }
+    tbody.innerHTML = carousels.map(item => `
+        <tr>
+            <td>${item.id}</td>
+            <td><img src="${item.imageUrl}" style="width: 80px; height: 45px; object-fit: cover; border-radius: 4px;" onerror="this.src='https://via.placeholder.com/80x45?text=Error'"></td>
+            <td style="max-width: 150px;">${escapeHtml(item.title || '-')}</td>
+            <td style="max-width: 200px;">${escapeHtml(item.linkUrl || '-')}</td>
+            <td>${item.sortOrder || 0}</td>
+            <td><span class="status-badge ${item.isActive == 1 ? 'status-normal' : 'status-disabled'}">${item.isActive == 1 ? '启用' : '禁用'}</span></td>
+            <td>
+                <button class="btn-warning btn-sm" onclick="editCarousel(${item.id})">编辑</button>
+                <button class="btn-danger btn-sm" onclick="deleteCarousel(${item.id})">删除</button>
+            </td>
+        </tr>
+    `).join('');
+  }
+
+  function openCarouselModal(id) {
+    // 重置文件输入框
+    const fileInput = document.getElementById('carouselFileInput');
+    if (fileInput) fileInput.value = '';
+
+    // 重置预览区域
+    const previewDiv = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+    const imageUrlInput = document.getElementById('carouselImageUrl');
+
+    if (id) {
+      const item = carousels.find(c => c.id === id);
+      if (item) {
+        document.getElementById('carouselModalTitle').textContent = '编辑轮播图';
+        document.getElementById('carouselId').value = item.id;
+        imageUrlInput.value = item.imageUrl;
+        document.getElementById('carouselTitle').value = item.title || '';
+        document.getElementById('carouselLinkUrl').value = item.linkUrl || '';
+        document.getElementById('carouselSortOrder').value = item.sortOrder || 0;
+        document.getElementById('carouselStatus').value = item.isActive;
+        if (item.imageUrl) {
+          previewImg.src = item.imageUrl;
+          previewDiv.style.display = 'block';
+        } else {
+          previewDiv.style.display = 'none';
+        }
+      }
+    } else {
+      document.getElementById('carouselModalTitle').textContent = '添加轮播图';
+      document.getElementById('carouselId').value = '';
+      imageUrlInput.value = '';
+      document.getElementById('carouselTitle').value = '';
+      document.getElementById('carouselLinkUrl').value = '';
+      document.getElementById('carouselSortOrder').value = 0;
+      document.getElementById('carouselStatus').value = 1;
+      previewDiv.style.display = 'none';
+      previewImg.src = '';
+    }
+    document.getElementById('carouselModal').classList.add('show');
+  }
+
+  async function saveCarousel() {
+    const data = {
+      id: document.getElementById('carouselId').value || null,
+      imageUrl: document.getElementById('carouselImageUrl').value,  // 直接使用URL
+      title: document.getElementById('carouselTitle').value,
+      linkUrl: document.getElementById('carouselLinkUrl').value,
+      sortOrder: parseInt(document.getElementById('carouselSortOrder').value),
+      isActive: parseInt(document.getElementById('carouselStatus').value)
+    };
+    if (!data.imageUrl) {
+      showToast('请输入图片URL', 'error');
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/system/carousel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      if (result.code === 200) {
+        showToast('保存成功', 'success');
+        closeCarouselModal();
+        await loadCarousels();
+      } else {
+        showToast(result.message, 'error');
+      }
+    } catch (error) {
+      showToast('保存失败', 'error');
+    }
+  }
+
+  window.editCarousel = function(id) {
+    openCarouselModal(id);
+  };
+
+  window.deleteCarousel = async function(id) {
+    if (!confirm('确定要删除该轮播图吗？')) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/system/carousel/${id}`, { method: 'DELETE' });
+      const result = await response.json();
+      if (result.code === 200) {
+        showToast('删除成功', 'success');
+        await loadCarousels();
+      } else {
+        showToast(result.message, 'error');
+      }
+    } catch (error) {
+      showToast('删除失败', 'error');
+    }
+  };
+
+  function closeCarouselModal() {
+    document.getElementById('carouselModal').classList.remove('show');
+  }
+
+  // 图片URL预览
+  document.getElementById('carouselImageUrl')?.addEventListener('input', function() {
+    const url = this.value;
+    if (url) {
+      document.getElementById('previewImg').src = url;
+      document.getElementById('imagePreview').style.display = 'block';
+    } else {
+      document.getElementById('imagePreview').style.display = 'none';
+    }
   });
 
-  // 初始化
+  // 操作日志
+  let currentLogPage = 1;
+
+  async function loadLogs(page = 1) {
+    currentLogPage = page;
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/system/logs?page=${page}&pageSize=20`);
+      const result = await response.json();
+      if (result.code === 200 && result.data) {
+        renderLogs(result.data.list);
+        renderLogsPagination(result.data.total, result.data.page, result.data.pageSize);
+      }
+    } catch (error) {
+      console.error('加载日志失败:', error);
+    }
+  }
+
+  function renderLogs(logs) {
+    const tbody = document.getElementById('logsTableBody');
+    if (!logs || logs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">暂无操作日志</td></tr>';
+      return;
+    }
+    tbody.innerHTML = logs.map(log => `
+        <tr>
+            <td>${log.createTime ? new Date(log.createTime).toLocaleString() : '-'}</td>
+            <td>${escapeHtml(log.adminName)}</td>
+            <td>${escapeHtml(log.action)}</td>
+            <td>${escapeHtml(log.target || '-')}</td>
+            <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(log.details || '-')}</td>
+            <td>${escapeHtml(log.ip || '-')}</td>
+        </tr>
+    `).join('');
+  }
+
+  function renderLogsPagination(total, page, pageSize) {
+    const totalPages = Math.ceil(total / pageSize);
+    if (totalPages <= 1) {
+      document.getElementById('logsPagination').innerHTML = '';
+      return;
+    }
+    let html = '';
+    for (let i = 1; i <= totalPages; i++) {
+      html += `<button class="page-btn ${i === page ? 'active' : ''}" data-page="${i}">${i}</button>`;
+    }
+    document.getElementById('logsPagination').innerHTML = html;
+    document.querySelectorAll('#logsPagination .page-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        loadLogs(parseInt(btn.dataset.page));
+      });
+    });
+  }
+
+  // 系统配置
+  let configs = [];
+
+  async function loadConfigs() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/system/configs`);
+      const result = await response.json();
+      if (result.code === 200) {
+        configs = result.data || [];
+        renderConfigs();
+      }
+    } catch (error) {
+      console.error('加载配置失败:', error);
+    }
+  }
+
+  function renderConfigs() {
+    const tbody = document.getElementById('configTableBody');
+    if (!configs || configs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">暂无配置数据</td></tr>';
+      return;
+    }
+    tbody.innerHTML = configs.map(config => `
+        <tr>
+            <td><strong>${escapeHtml(config.configKey)}</strong><br><small class="text-muted">${escapeHtml(config.description || '')}</small></td>
+            <td>
+                <input type="text" id="config_${config.configKey}" class="form-input" value="${escapeHtml(config.configValue)}" style="width: 100%;">
+            </td>
+            <td>${escapeHtml(config.description || '-')}</td>
+            <td>
+                <button class="btn-primary btn-sm" onclick="saveConfig('${config.configKey}')">保存</button>
+            </td>
+        </tr>
+    `).join('');
+  }
+
+  async function saveConfig(key) {
+    const value = document.getElementById(`config_${key}`).value;
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/system/config`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ configKey: key, configValue: value })
+      });
+      const result = await response.json();
+      if (result.code === 200) {
+        showToast('保存成功', 'success');
+      } else {
+        showToast(result.message, 'error');
+      }
+    } catch (error) {
+      showToast('保存失败', 'error');
+    }
+  }
+
+  // 系统设置子标签页切换
+  function initSystemTabs() {
+    document.querySelectorAll('.system-subtab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const subtab = tab.dataset.subtab;
+        document.querySelectorAll('.system-subtab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.system-subtab-content').forEach(content => {
+          content.style.display = 'none';
+        });
+        document.getElementById(`${subtab}Subtab`).style.display = 'block';
+
+        // 加载对应数据
+        if (subtab === 'announcement') loadAnnouncements();
+        else if (subtab === 'carousel') loadCarousels();
+        else if (subtab === 'logs') loadLogs();
+        else if (subtab === 'config') loadConfigs();
+      });
+    });
+  }
+
+  /**
+   * 上传图片到服务器
+   * @param {File} file 图片文件
+   * @returns {Promise<string>} 返回图片URL
+   */
+  async function uploadImage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/upload/image`, {
+        method: 'POST',
+        body: formData
+      });
+      const result = await response.json();
+      if (result.code === 200 && result.data && result.data.url) {
+        return result.data.url;
+      } else {
+        throw new Error(result.message || '上传失败');
+      }
+    } catch (error) {
+      console.error('上传失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 删除服务器上的图片
+   * @param {string} imageUrl 图片URL
+   */
+  async function deleteImage(imageUrl) {
+    try {
+      await fetch(`${API_BASE_URL}/upload/image?url=${encodeURIComponent(imageUrl)}`, {
+        method: 'DELETE'
+      });
+    } catch (error) {
+      console.error('删除图片失败:', error);
+    }
+  }
+
+  // 绑定文件选择上传事件
+  function bindImageUpload() {
+    const fileInput = document.getElementById('carouselFileInput');
+    const imageUrlInput = document.getElementById('carouselImageUrl');
+    const previewDiv = document.getElementById('imagePreview');
+    const previewImg = document.getElementById('previewImg');
+    const clearBtn = document.getElementById('clearImageBtn');
+
+    if (!fileInput) return;
+
+    // 文件选择变化时上传
+    fileInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // 验证文件类型
+      if (!file.type.startsWith('image/')) {
+        showToast('请选择图片文件', 'error');
+        fileInput.value = '';
+        return;
+      }
+
+      // 验证文件大小（5MB）
+      if (file.size > 5 * 1024 * 1024) {
+        showToast('图片大小不能超过5MB', 'error');
+        fileInput.value = '';
+        return;
+      }
+
+      // 显示上传中状态
+      showToast('上传中...', 'info');
+
+      try {
+        const imageUrl = await uploadImage(file);
+        imageUrlInput.value = imageUrl;
+        previewImg.src = imageUrl;
+        previewDiv.style.display = 'block';
+        showToast('上传成功', 'success');
+      } catch (error) {
+        showToast('上传失败：' + error.message, 'error');
+      }
+
+      // 清空input，允许重新选择同一文件
+      fileInput.value = '';
+    });
+
+    // 清除图片
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        const oldUrl = imageUrlInput.value;
+        if (oldUrl && oldUrl.startsWith('/uploads/')) {
+          deleteImage(oldUrl);
+        }
+        imageUrlInput.value = '';
+        previewDiv.style.display = 'none';
+        previewImg.src = '';
+        showToast('已清除图片', 'success');
+      });
+    }
+  }
+
+  document.getElementById('announcementTargetType').addEventListener('change', function() {
+    const group = document.getElementById('targetUserGroup');
+    group.style.display = this.value === 'user' ? 'block' : 'none';
+
+    if (this.value === 'user') {
+      loadUserListForAnnouncement();
+    }
+  });
+
+  async function loadUserListForAnnouncement() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/users`);
+      const result = await response.json();
+      if (result.code === 200 && result.data) {
+        const container = document.getElementById('userCheckboxList');
+        if (container) {
+          container.innerHTML = result.data.map(user => `
+          <label style="display: flex; align-items: center; padding: 6px 8px; cursor: pointer; border-radius: 4px; margin-bottom: 4px; transition: background 0.2s;">
+            <input type="checkbox" class="user-select-checkbox" value="${user.userId}" data-name="${escapeHtml(user.username)}" style="margin-right: 10px;">
+            <div style="flex: 1;">
+              <strong>${escapeHtml(user.username)}</strong>
+              <span style="font-size: 11px; color: var(--gray-500); margin-left: 8px;">${escapeHtml(user.email || '无邮箱')}</span>
+            </div>
+            <span style="font-size: 11px; color: var(--gray-400);">ID: ${user.userId}</span>
+          </label>
+        `).join('');
+
+          // 绑定复选框事件
+          document.querySelectorAll('.user-select-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+              updateSelectedUsers();
+            });
+          });
+
+          // 如果有已选择的用户，恢复选中状态
+          if (selectedUsers.length > 0) {
+            document.querySelectorAll('.user-select-checkbox').forEach(checkbox => {
+              if (selectedUsers.some(u => u.id == checkbox.value)) {
+                checkbox.checked = true;
+              }
+            });
+            updateSelectedUsersDisplay();
+          }
+        }
+      }
+    } catch (error) {
+      console.error('加载用户列表失败:', error);
+      showToast('加载用户列表失败', 'error');
+    }
+  }
+
+  function updateSelectedUsers() {
+    selectedUsers = [];
+    document.querySelectorAll('.user-select-checkbox:checked').forEach(checkbox => {
+      selectedUsers.push({
+        id: checkbox.value,
+        name: checkbox.dataset.name
+      });
+    });
+    updateSelectedUsersDisplay();
+  }
+
+  // 更新显示选中的用户
+  function updateSelectedUsersDisplay() {
+    const displayDiv = document.getElementById('selectedUserDisplay');
+    if (displayDiv) {
+      if (selectedUsers.length === 0) {
+        displayDiv.innerHTML = '未选择任何用户';
+        displayDiv.style.color = 'var(--gray-500)';
+      } else {
+        displayDiv.innerHTML = `已选择 ${selectedUsers.length} 位用户：${selectedUsers.map(u => u.name).join('、')}`;
+        displayDiv.style.color = 'var(--primary)';
+      }
+    }
+  }
+
+  // 清除选中的用户
+  function clearSelectedUsers() {
+    selectedUsers = [];
+    const checkboxes = document.querySelectorAll('.user-select-checkbox');
+    if (checkboxes) {
+      checkboxes.forEach(cb => cb.checked = false);
+    }
+    updateSelectedUsersDisplay();
+  }
+
+
+
+  // 在标签页切换时初始化系统设置
+  // 修改原来的标签页切换逻辑，在切换到 system 时初始化子标签
+
+  // ==================== 初始化 ====================
   checkAuth();
   loadDashboard();
+  loadHotMovies();
+  loadActiveUsers();
+  bindEvents();
+  initSystemTabs();
+  bindImageUpload();
+  bindAnnouncementTargetEvents();
 </script>
 </body>
 </html>

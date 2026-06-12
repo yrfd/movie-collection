@@ -5,6 +5,7 @@ import com.movie.service.AdminService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,6 +26,7 @@ public class AdminController {
     public ApiResponse<?> adminLogin(@RequestBody AdminLoginRequest request, HttpSession session) {
         if (adminService.validateSecret(request.getSecret())) {
             session.setAttribute(ADMIN_SESSION_KEY, true);
+            session.setAttribute("ADMIN_NAME", "管理员");
             Map<String, Object> data = new HashMap<>();
             data.put("success", true);
             return ApiResponse.success("登录成功", data);
@@ -159,5 +161,44 @@ public class AdminController {
     private boolean isAdminLogin(HttpSession session) {
         Boolean isLogin = (Boolean) session.getAttribute(ADMIN_SESSION_KEY);
         return isLogin != null && isLogin;
+    }
+
+    // 获取热门电影 TOP N
+    @GetMapping("/stats/hot-movies")
+    public ApiResponse<?> getHotMovies(@RequestParam(defaultValue = "5") int limit) {
+        return ApiResponse.success(adminService.getHotMovies(limit));
+    }
+
+    // 获取活跃用户 TOP N
+    @GetMapping("/stats/active-users")
+    public ApiResponse<?> getActiveUsers(@RequestParam(defaultValue = "5") int limit) {
+        return ApiResponse.success(adminService.getActiveUsers(limit));
+    }
+
+    // 启用/禁用用户
+    @PutMapping("/user/{userId}/{action}")
+    public ApiResponse<?> toggleUserStatus(@PathVariable Integer userId, @PathVariable String action) {
+        Map<String, Object> result;
+        if ("enable".equals(action)) {
+            result = adminService.enableUser(userId);
+        } else if ("disable".equals(action)) {
+            result = adminService.disableUser(userId);
+        } else {
+            return ApiResponse.error(400, "无效的操作");
+        }
+
+        boolean success = (Boolean) result.get("success");
+        String message = (String) result.get("message");
+
+        if (success) {
+            return ApiResponse.success(message);
+        } else {
+            return ApiResponse.error(400, message);
+        }
+    }
+    // 导出用户数据
+    @GetMapping("/users/export")
+    public void exportUsers(HttpServletResponse response) {
+        adminService.exportUsers(response);
     }
 }

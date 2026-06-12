@@ -1,3 +1,4 @@
+// AdminService.java
 package com.movie.service;
 
 import com.movie.dto.*;
@@ -6,6 +7,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.PrintWriter;
 import java.util.*;
 
 @Service
@@ -17,23 +27,14 @@ public class AdminService {
     @Autowired
     private AdminMapper adminMapper;
 
-    /**
-     * 验证管理员密钥
-     */
     public boolean validateSecret(String secret) {
         return secret != null && secret.equals(adminSecret);
     }
 
-    /**
-     * 获取所有用户
-     */
     public List<AdminUserInfo> getAllUsers() {
         return adminMapper.getAllUsers();
     }
 
-    /**
-     * 禁用用户
-     */
     public Map<String, Object> disableUser(Integer userId) {
         Map<String, Object> result = new HashMap<>();
         if (adminMapper.checkUserExists(userId) == 0) {
@@ -47,9 +48,6 @@ public class AdminService {
         return result;
     }
 
-    /**
-     * 启用用户
-     */
     public Map<String, Object> enableUser(Integer userId) {
         Map<String, Object> result = new HashMap<>();
         if (adminMapper.checkUserExists(userId) == 0) {
@@ -63,9 +61,6 @@ public class AdminService {
         return result;
     }
 
-    /**
-     * 删除用户
-     */
     @Transactional
     public Map<String, Object> deleteUser(Integer userId) {
         Map<String, Object> result = new HashMap<>();
@@ -80,23 +75,15 @@ public class AdminService {
         return result;
     }
 
-    /**
-     * 获取所有电影
-     */
     public List<AdminMovieInfo> getAllMovies() {
         return adminMapper.getAllMoviesForAdmin();
     }
 
-    /**
-     * 删除电影
-     */
     @Transactional
     public Map<String, Object> deleteMovie(Integer movieId) {
         Map<String, Object> result = new HashMap<>();
-        // 先删除关联的收藏和评论
         adminMapper.deleteMovieCollections(movieId);
         adminMapper.deleteMovieComments(movieId);
-        // 再删除电影
         int rows = adminMapper.deleteMovie(movieId);
         if (rows > 0) {
             result.put("success", true);
@@ -108,16 +95,10 @@ public class AdminService {
         return result;
     }
 
-    /**
-     * 获取所有评论
-     */
     public List<AdminCommentInfo> getAllComments() {
         return adminMapper.getAllComments();
     }
 
-    /**
-     * 删除评论
-     */
     public Map<String, Object> deleteComment(Integer commentId) {
         Map<String, Object> result = new HashMap<>();
         int rows = adminMapper.deleteComment(commentId);
@@ -132,11 +113,12 @@ public class AdminService {
     }
 
     /**
-     * 获取仪表盘统计数据
+     * ✅ 重构：获取仪表盘统计数据
      */
     public DashboardStats getDashboardStats() {
         DashboardStats stats = new DashboardStats();
 
+        // 1. 获取系统总体统计
         Map<String, Object> systemStats = adminMapper.getSystemStats();
         if (systemStats != null) {
             stats.setUserCount((Long) systemStats.getOrDefault("userCount", 0L));
@@ -147,17 +129,107 @@ public class AdminService {
             stats.setTodayNewComments((Long) systemStats.getOrDefault("todayNewComments", 0L));
         }
 
-        // 获取每日统计数据
-        List<DashboardStats.DailyStats> dailyStats = new ArrayList<>();
-        List<Map<String, Object>> newUsers = adminMapper.getLast7DaysNewUsers();
-        for (Map<String, Object> item : newUsers) {
-            DashboardStats.DailyStats ds = new DashboardStats.DailyStats();
-            ds.setDate(item.get("date").toString());
-            ds.setCount((Long) item.get("count"));
-            dailyStats.add(ds);
+        // 2. 获取近7天新增用户每日数据
+        List<Map<String, Object>> userDailyData = adminMapper.getLast7DaysNewUsers();
+        List<DashboardStats.DailyStat> userDailyStats = new ArrayList<>();
+
+        // 生成过去7天的完整日期列表
+        List<String> last7Days = getLast7DaysDates();
+
+        // 将数据库查询结果转换为 Map
+        Map<String, Long> userCountMap = new HashMap<>();
+        for (Map<String, Object> item : userDailyData) {
+            Object dateObj = item.get("date");
+            Object countObj = item.get("count");
+            if (dateObj != null && countObj != null) {
+                String dateStr = dateObj.toString();
+                Long count = ((Number) countObj).longValue();
+                userCountMap.put(dateStr, count);
+            }
         }
-        stats.setDailyStats(dailyStats);
+
+        // 填充完整7天数据（没有数据的日期补0）
+        for (String date : last7Days) {
+            DashboardStats.DailyStat dailyStat = new DashboardStats.DailyStat();
+            dailyStat.setDate(date);
+            dailyStat.setCount(userCountMap.getOrDefault(date, 0L));
+            userDailyStats.add(dailyStat);
+        }
+        stats.setUserDailyStats(userDailyStats);
+
+        // 3. 获取近7天新增评论每日数据
+        List<Map<String, Object>> commentDailyData = adminMapper.getLast7DaysNewComments();
+        List<DashboardStats.DailyStat> commentDailyStats = new ArrayList<>();
+
+        Map<String, Long> commentCountMap = new HashMap<>();
+        for (Map<String, Object> item : commentDailyData) {
+            Object dateObj = item.get("date");
+            Object countObj = item.get("count");
+            if (dateObj != null && countObj != null) {
+                String dateStr = dateObj.toString();
+                Long count = ((Number) countObj).longValue();
+                commentCountMap.put(dateStr, count);
+            }
+        }
+
+        // 填充完整7天数据
+        for (String date : last7Days) {
+            DashboardStats.DailyStat dailyStat = new DashboardStats.DailyStat();
+            dailyStat.setDate(date);
+            dailyStat.setCount(commentCountMap.getOrDefault(date, 0L));
+            commentDailyStats.add(dailyStat);
+        }
+        stats.setCommentDailyStats(commentDailyStats);
 
         return stats;
+    }
+
+    /**
+     * 获取过去7天的日期列表（格式：yyyy-MM-dd）
+     */
+    private List<String> getLast7DaysDates() {
+        List<String> dates = new ArrayList<>();
+        Calendar calendar = Calendar.getInstance();
+
+        // 从7天前开始，到昨天结束
+        for (int i = 6; i >= 0; i--) {
+            calendar.setTime(new Date());
+            calendar.add(Calendar.DAY_OF_MONTH, -i);
+            String dateStr = new java.text.SimpleDateFormat("yyyy-MM-dd").format(calendar.getTime());
+            dates.add(dateStr);
+        }
+        return dates;
+    }
+
+    public List<Map<String, Object>> getHotMovies(int limit) {
+        return adminMapper.selectHotMovies(limit);
+    }
+
+    public List<Map<String, Object>> getActiveUsers(int limit) {
+        return adminMapper.selectActiveUsers(limit);
+    }
+
+    public void exportUsers(HttpServletResponse response) {
+        List<AdminUserInfo> users = adminMapper.getAllUsers();
+        response.setContentType("text/csv;charset=UTF-8");
+        response.setHeader("Content-Disposition", "attachment; filename=users.csv");
+        try {
+            PrintWriter writer = response.getWriter();
+            writer.println("ID,用户名,邮箱,注册时间,收藏数,评论数,状态");
+            for (AdminUserInfo user : users) {
+                writer.printf("%d,%s,%s,%s,%d,%d,%s%n",
+                        user.getUserId(),
+                        user.getUsername(),
+                        user.getEmail(),
+                        user.getCreateTime(),
+                        user.getMovieCount(),
+                        user.getCommentCount(),
+                        user.getStatus() == 1 ? "正常" : "禁用"
+                );
+            }
+            writer.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
