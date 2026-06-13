@@ -15,6 +15,7 @@
   --warning: #f59e0b;
   --info: #3b82f6;
   --dark: #1f2937;
+  --gray-50: #f9fafb;
   --gray-100: #f3f4f6;
   --gray-200: #e5e7eb;
   --gray-300: #d1d5db;
@@ -1935,11 +1936,6 @@ body {
 /* 回复容器过渡效果 */
 .replies-container {
   transition: all 0.2s;
-}
-
-/* 不同层级背景色定义 */
-:root {
-  --gray-50: #f9fafb;
 }
 
 .comment-item[data-level="0"] { background-color: var(--white); }

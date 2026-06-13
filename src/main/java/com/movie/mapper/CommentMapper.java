@@ -21,6 +21,7 @@ public interface CommentMapper {
 
     // 根据用户ID和电影ID查找公开评价
     Comment findCommentByUserAndMovie(@Param("userId") Integer userId, @Param("movieId") Integer movieId);
+
     /**
      * 增加点赞数
      */
@@ -38,4 +39,18 @@ public interface CommentMapper {
      */
     @Select("SELECT like_count FROM movie_comment WHERE comment_id = #{commentId}")
     int getLikeCount(@Param("commentId") Integer commentId);
+
+    /**
+     * 更新用户对某部电影的公开评价中的评分快照
+     * 当用户在收藏中修改个人评分时，同步更新公开评价表
+     *
+     * @param userId 用户ID
+     * @param movieId 电影ID
+     * @param newRating 新评分
+     * @return 更新的记录数（0或1）
+     */
+    // 只保留方法声明，SQL 在 XML 中定义
+    int updateCommentRatingByUserAndMovie(@Param("userId") Integer userId,
+                                          @Param("movieId") Integer movieId,
+                                          @Param("newRating") Double newRating);
 }

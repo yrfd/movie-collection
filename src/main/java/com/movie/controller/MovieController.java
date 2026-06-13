@@ -218,4 +218,5 @@ public class MovieController {
             e.printStackTrace();
             return ApiResponse.error("更新失败: " + e.getMessage());
         }
+    }
 }
