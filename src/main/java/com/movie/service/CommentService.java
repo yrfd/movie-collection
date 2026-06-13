@@ -6,6 +6,7 @@ import com.movie.dto.ReplyRequest;
 import com.movie.entity.Comment;
 import com.movie.entity.MovieCollection;
 import com.movie.entity.MoviePublic;
+import com.movie.mapper.CommentLikeMapper;
 import com.movie.mapper.CommentMapper;
 import com.movie.mapper.MovieMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,10 @@ public class CommentService {
 
     @Autowired
     private MovieMapper movieMapper;
+
+    @Autowired
+    private CommentLikeMapper commentLikeMapper;
+
 
     public List<Comment> getCommentsByMovie(Integer movieId) {
         return commentMapper.findCommentsByMovieId(movieId);
@@ -251,5 +256,49 @@ public class CommentService {
         System.out.println("📊 更新电影评分: movieId=" + movieId +
                 ", avgRating=" + avgRating +
                 ", 评分人数=" + count);
+    }
+
+    @Transactional
+    public Map<String, Object> toggleLike(Integer userId, Integer commentId) {
+        Map<String, Object> result = new HashMap<>();
+
+        // 检查评论是否存在
+        Comment comment = commentMapper.findCommentById(commentId);
+        if (comment == null) {
+            result.put("success", false);
+            result.put("message", "评论不存在");
+            return result;
+        }
+
+        // 检查是否已点赞
+        boolean liked = commentLikeMapper.isLiked(userId, commentId);
+
+        if (liked) {
+            // 取消点赞
+            commentLikeMapper.deleteLike(userId, commentId);
+            // 减少点赞数
+            commentMapper.decrementLikeCount(commentId);
+            result.put("success", true);
+            result.put("message", "取消点赞");
+            result.put("liked", false);
+        } else {
+            // 添加点赞
+            commentLikeMapper.insertLike(userId, commentId);
+            // 增加点赞数
+            commentMapper.incrementLikeCount(commentId);
+            result.put("success", true);
+            result.put("message", "点赞成功");
+            result.put("liked", true);
+        }
+
+        // 获取最新点赞数
+        int newLikeCount = commentMapper.getLikeCount(commentId);
+        result.put("likeCount", newLikeCount);
+
+        return result;
+    }
+
+    public boolean isLiked(Integer userId, Integer commentId) {
+        return commentLikeMapper.isLiked(userId, commentId);
     }
 }

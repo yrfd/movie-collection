@@ -149,4 +149,30 @@ public class CommentController {
         String message = (String) result.get("message");
         return ApiResponse.success(message);
     }
+
+    @PostMapping("/like/{commentId}")
+    public ApiResponse<?> likeComment(@PathVariable Integer commentId, HttpServletRequest request) {
+        Integer userId = getUserIdFromToken(request);
+        if (userId == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        Map<String, Object> result = commentService.toggleLike(userId, commentId);
+        if ((Boolean) result.get("success")) {
+            return ApiResponse.success((String) result.get("message"), result.get("likeCount"));
+        }
+        return ApiResponse.error(400, (String) result.get("message"));
+    }
+
+    /**
+     * 获取用户对评论的点赞状态
+     */
+    @GetMapping("/like/status/{commentId}")
+    public ApiResponse<?> getLikeStatus(@PathVariable Integer commentId, HttpServletRequest request) {
+        Integer userId = getUserIdFromToken(request);
+        if (userId == null) {
+            return ApiResponse.success(false);
+        }
+        boolean isLiked = commentService.isLiked(userId, commentId);
+        return ApiResponse.success(isLiked);
+    }
 }

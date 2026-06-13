@@ -295,4 +295,42 @@ public class MovieService {
         result.put("message", "私人评价更新成功");
         return result;
     }
+
+    @Transactional
+    public Map<String, Object> updateCategory(Integer userId, Integer categoryId, CategoryRequest request) {
+        Map<String, Object> result = new HashMap<>();
+
+        // 验证分类是否存在且属于当前用户
+        MovieCategory category = movieMapper.findCategoryById(categoryId);
+        if (category == null) {
+            result.put("success", false);
+            result.put("message", "分类不存在");
+            return result;
+        }
+        if (!category.getUserId().equals(userId)) {
+            result.put("success", false);
+            result.put("message", "无权限修改此分类");
+            return result;
+        }
+
+        // 检查新名称是否已存在
+        List<MovieCategory> existing = movieMapper.findCategoriesByUserId(userId);
+        if (existing.stream().anyMatch(c -> c.getCategoryName().equals(request.getCategoryName())
+                && !c.getCategoryId().equals(categoryId))) {
+            result.put("success", false);
+            result.put("message", "分类名称已存在");
+            return result;
+        }
+
+        // 更新分类名称
+        int rows = movieMapper.updateCategoryName(categoryId, request.getCategoryName());
+        if (rows > 0) {
+            result.put("success", true);
+            result.put("message", "分类修改成功");
+        } else {
+            result.put("success", false);
+            result.put("message", "修改失败");
+        }
+        return result;
+    }
 }

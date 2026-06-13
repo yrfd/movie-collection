@@ -77,4 +77,9 @@ public interface MovieMapper {
     Double getAveragePersonalRatingByMovie(@Param("movieId") Integer movieId);
     Integer getRatingCountFromCollections(@Param("movieId") Integer movieId);
 
+    @Update("UPDATE movie_category SET category_name = #{categoryName} WHERE category_id = #{categoryId}")
+    int updateCategoryName(@Param("categoryId") Integer categoryId,
+                           @Param("categoryName") String categoryName);
+
+    
 }

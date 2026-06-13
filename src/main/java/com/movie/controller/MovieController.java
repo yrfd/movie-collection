@@ -192,4 +192,20 @@ public class MovieController {
         List<MovieCollection> movies = movieService.getCollectionsByCategory(userId, categoryId);
         return ApiResponse.success(movies);
     }
+
+    @PutMapping("/categories/{categoryId}")
+    public ApiResponse<?> updateCategory(@PathVariable Integer categoryId,
+                                         @RequestBody CategoryRequest request,
+                                         HttpServletRequest req) {
+        Integer userId = getUserIdFromToken(req);
+        if (userId == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        Map<String, Object> result = movieService.updateCategory(userId, categoryId, request);
+        boolean success = (Boolean) result.get("success");
+        if (success) {
+            return ApiResponse.success((String) result.get("message"));
+        }
+        return ApiResponse.error(400, (String) result.get("message"));
+    }
 }

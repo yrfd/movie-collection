@@ -229,6 +229,22 @@ const commentAPI = {
     },
     getMyComments: () => {
         return request('/comment/my');
+    },
+    replyComment: (parentCommentId, content) => {
+        return request('/comment/reply', {
+            method: 'POST',
+            body: JSON.stringify({ parentCommentId, content })
+        });
+    },
+
+    likeComment: (commentId) => {
+        return request(`/comment/like/${commentId}`, {
+            method: 'POST'
+        });
+    },
+
+    getLikeStatus: (commentId) => {
+        return request(`/comment/like/status/${commentId}`);
     }
 };
 
