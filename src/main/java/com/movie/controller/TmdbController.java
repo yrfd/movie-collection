@@ -106,6 +106,36 @@ public class TmdbController {
             return ResponseEntity.status(500).body("{\"error\":\"" + e.getMessage() + "\"}");
         }
     }
+
+    @GetMapping(value = "/discover/movie", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<String> discoverMovies(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(name = "primary_release_year", required = false) Integer year,
+            @RequestParam(name = "with_genres", required = false) String withGenres) {
+
+        StringBuilder url = new StringBuilder(TMDB_BASE_URL + "/discover/movie?api_key=" + TMDB_API_KEY + "&language=zh-CN&page=" + page);
+        if (year != null) {
+            url.append("&primary_release_year=").append(year);
+        }
+        if (withGenres != null && !withGenres.isEmpty()) {
+            url.append("&with_genres=").append(withGenres);
+        }
+
+        System.out.println("发现电影URL: " + url.toString());
+
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Accept", "application/json;charset=UTF-8");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<byte[]> response = restTemplate.exchange(url.toString(), HttpMethod.GET, entity, byte[].class);
+            String json = new String(response.getBody(), StandardCharsets.UTF_8);
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(json);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
     @GetMapping(value = "/movie/{movieId}", produces = "application/json;charset=UTF-8")
     public ResponseEntity<String> getMovieDetails(@PathVariable int movieId) {
         // 构建获取详情的URL，使用 /movie/{movie_id} 端点 [citation:6]

@@ -590,13 +590,13 @@
     });
   }
 
-  // 搜索电影 (调用TMDB)
+  // 搜索电影 (调用 TMDB 的搜索或发现接口)
   async function searchMovies() {
     if (isLoading) return;
     isLoading = true;
     document.getElementById('loadingIndicator').style.display = 'flex';
 
-    const title = document.getElementById('searchTitle').value;
+    const title = document.getElementById('searchTitle').value.trim();
     const year = document.getElementById('searchYear').value;
     const genre = document.getElementById('searchGenre').value;
 
@@ -605,10 +605,13 @@
       url = `${API_BASE_URL}/tmdb/search/movie?page=${currentPage}&query=${encodeURIComponent(title)}`;
       if (year) url += `&year=${year}`;
       if (genre) url += `&with_genres=${genre}`;
+    } else if (year || genre) {
+      // 使用 discover 接口，参数名与后端一致
+      url = `${API_BASE_URL}/tmdb/discover/movie?page=${currentPage}`;
+      if (year) url += `&primary_release_year=${year}`;
+      if (genre) url += `&with_genres=${genre}`;
     } else {
       url = `${API_BASE_URL}/tmdb/movie/popular?page=${currentPage}`;
-      if (year) url += `&year=${year}`;
-      if (genre) url += `&with_genres=${genre}`;
     }
 
     try {
@@ -641,25 +644,25 @@
     }
 
     grid.innerHTML = movies.map(movie => `
-      <div class="card movie-card" data-movie-id="${movie.id}">
-        <img src="${movie.poster_path ? 'https://image.tmdb.org/t/p/w500' + movie.poster_path : 'https://via.placeholder.com/300x450?text=No+Poster'}"
-             class="movie-poster"
-             alt="${escapeHtml(movie.title)}"
-             onerror="this.src='https://via.placeholder.com/300x450?text=No+Poster'">
-        <div class="movie-info">
-          <h3 class="movie-title">${escapeHtml(movie.title)}</h3>
-          <p class="movie-year">${movie.release_date ? movie.release_date.split('-')[0] : '未知'}</p>
-          <!-- 显示本平台评分 -->
-          <div class="platform-rating" id="rating-${movie.id}">
-            <span class="label">本平台评分：</span>
-            <span class="value">加载中...</span>
-          </div>
-          <div style="margin-top: 12px;">
-            <button class="btn btn-primary btn-sm view-detail" data-movie='${JSON.stringify(movie)}'>查看详情</button>
-            <button class="btn btn-secondary btn-sm collect-movie" data-movie='${JSON.stringify(movie)}'>⭐ 收藏</button>
-          </div>
+        <div class="card movie-card" data-movie-id="${movie.id}">
+            <img src="${movie.poster_path ? 'https://image.tmdb.org/t/p/w500' + movie.poster_path : 'https://via.placeholder.com/300x450?text=No+Poster'}"
+                 class="movie-poster"
+                 alt="${escapeHtml(movie.title)}"
+                 onerror="this.src='https://via.placeholder.com/300x450?text=No+Poster'">
+            <div class="movie-info">
+                <h3 class="movie-title">${escapeHtml(movie.title)}</h3>
+                <p class="movie-year">${movie.release_date ? movie.release_date.split('-')[0] : '未知'}</p>
+                <!-- 显示本平台评分 -->
+                <div class="platform-rating" id="rating-${movie.id}">
+                    <span class="label">本平台评分：</span>
+                    <span class="value">加载中...</span>
+                </div>
+                <div style="margin-top: 12px;">
+                    <button class="btn btn-primary btn-sm view-detail" data-id="${movie.id}">查看详情</button>
+                    <button class="btn btn-secondary btn-sm collect-movie" data-id="${movie.id}">⭐ 收藏</button>
+                </div>
+            </div>
         </div>
-      </div>
     `).join('');
 
     // 异步加载每部电影的本平台评分
@@ -667,29 +670,32 @@
       loadPlatformRatingForCard(movie.id);
     });
 
-    // 绑定卡片点击和按钮事件
+    // 绑定卡片点击和按钮事件（使用事件委托或遍历绑定）
     document.querySelectorAll('.movie-card').forEach(card => {
+      const movieId = parseInt(card.dataset.movieId);
+      const movie = movies.find(m => m.id === movieId);
+      if (!movie) return;
+
       const viewBtn = card.querySelector('.view-detail');
       const collectBtn = card.querySelector('.collect-movie');
-      const movieData = JSON.parse(viewBtn.dataset.movie);
 
       card.addEventListener('click', (e) => {
         if (e.target.classList.contains('view-detail') || e.target.classList.contains('collect-movie')) return;
-        showMovieDetail(movieData);
+        showMovieDetail(movie);
       });
 
       viewBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        showMovieDetail(movieData);
+        showMovieDetail(movie);
       });
 
       collectBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         const token = localStorage.getItem('token');
         if (!token) {
-          showLoginPrompt('收藏电影需要登录，请先登录', { type: 'collect', movieData: movieData });
+          showLoginPrompt('收藏电影需要登录，请先登录', { type: 'collect', movieData: movie });
         } else {
-          openCollectModal(movieData);
+          openCollectModal(movie);
         }
       });
     });
