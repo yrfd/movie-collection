@@ -58,4 +58,7 @@ public interface AdminMapper {
 
     /** 获取近7天新增评论数 */
     List<Map<String, Object>> getLast7DaysNewComments();
+
+    List<Map<String, Object>> selectHotMovies(@Param("limit") int limit);
+    List<Map<String, Object>> selectActiveUsers(@Param("limit") int limit);
 }

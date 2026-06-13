@@ -134,6 +134,7 @@ public class MovieService {
 
     /**
      * 更新电影收藏（个人评分、观影状态、私人笔记）
+     * 采用 main 分支的完善逻辑
      */
     @Transactional
     public Map<String, Object> updateCollection(Integer collectionId, MovieRequest request) {
@@ -338,6 +339,47 @@ public class MovieService {
                 categoryId, null, null, null, null);
     }
 
+    /**
+     * 更新分类名称 - 保留 feature/mmc 分支功能
+     */
+    @Transactional
+    public Map<String, Object> updateCategory(Integer userId, Integer categoryId, CategoryRequest request) {
+        Map<String, Object> result = new HashMap<>();
+
+        // 验证分类是否存在且属于当前用户
+        MovieCategory category = movieMapper.findCategoryById(categoryId);
+        if (category == null) {
+            result.put("success", false);
+            result.put("message", "分类不存在");
+            return result;
+        }
+        if (!category.getUserId().equals(userId)) {
+            result.put("success", false);
+            result.put("message", "无权限修改此分类");
+            return result;
+        }
+
+        // 检查新名称是否已存在
+        List<MovieCategory> existing = movieMapper.findCategoriesByUserId(userId);
+        if (existing.stream().anyMatch(c -> c.getCategoryName().equals(request.getCategoryName())
+                && !c.getCategoryId().equals(categoryId))) {
+            result.put("success", false);
+            result.put("message", "分类名称已存在");
+            return result;
+        }
+
+        // 更新分类名称
+        int rows = movieMapper.updateCategoryName(categoryId, request.getCategoryName());
+        if (rows > 0) {
+            result.put("success", true);
+            result.put("message", "分类修改成功");
+        } else {
+            result.put("success", false);
+            result.put("message", "修改失败");
+        }
+        return result;
+    }
+
     // ========== 私人评价管理 ==========
 
     /**
@@ -375,7 +417,7 @@ public class MovieService {
     // ========== 批量更新演员信息 ==========
 
     /**
-     * 批量更新所有电影的演员信息（从TMDB获取）
+     * 批量更新所有电影的演员信息（从TMDB获取）- 保留 main 分支功能
      */
     @Transactional
     public int updateAllMoviesActors() {

@@ -69,6 +69,210 @@
       font-size: 0.8rem;
       color: var(--gray-500);
     }
+    /* 轮播图样式 */
+    .carousel-container {
+      position: relative;
+      margin-bottom: 30px;
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+    }
+
+    .carousel-slide {
+      min-width: 100%;
+      position: relative;
+    }
+
+    .carousel-slide img {
+      width: 100%;
+      height: 350px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .carousel-slide .carousel-caption {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(transparent, rgba(0,0,0,0.7));
+      color: white;
+      padding: 40px 20px 20px;
+      text-align: center;
+    }
+
+    .carousel-slide .carousel-caption h3 {
+      font-size: 1.5rem;
+      margin-bottom: 5px;
+    }
+
+    .carousel-slide .carousel-caption p {
+      font-size: 0.9rem;
+      opacity: 0.9;
+    }
+
+    .carousel-prev, .carousel-next {
+      transition: background 0.2s;
+    }
+
+    .carousel-prev:hover, .carousel-next:hover {
+      background: rgba(0,0,0,0.8);
+    }
+
+    .carousel-dot {
+      width: 10px;
+      height: 10px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .carousel-dot.active {
+      background: var(--primary);
+      width: 24px;
+      border-radius: 5px;
+    }
+
+    @media (max-width: 768px) {
+      .carousel-slide img {
+        height: 200px;
+      }
+      .carousel-slide .carousel-caption h3 {
+        font-size: 1rem;
+      }
+    }
+    /* 公告图标样式 */
+    .announcement-icon {
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+
+    .announcement-icon:hover {
+      transform: scale(1.1);
+    }
+
+    .announcement-badge {
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.6;
+      }
+    }
+
+    /* 公告列表样式 */
+    .announcement-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .announcement-item {
+      padding: 16px;
+      background: var(--gray-100);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+    }
+
+    .announcement-item:hover {
+      background: var(--gray-200);
+      transform: translateX(4px);
+    }
+
+    .announcement-item.unread {
+      background: var(--primary-light);
+      border-left-color: var(--primary);
+    }
+
+    .announcement-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .announcement-title h4 {
+      margin: 0;
+      font-size: 1rem;
+    }
+
+    .announcement-time {
+      font-size: 11px;
+      color: var(--gray-500);
+    }
+
+    .announcement-content {
+      font-size: 0.875rem;
+      color: var(--gray-600);
+      line-height: 1.5;
+      margin-bottom: 8px;
+    }
+
+    .announcement-expand {
+      text-align: right;
+    }
+
+    .announcement-expand button {
+      background: none;
+      border: none;
+      color: var(--primary);
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .announcement-detail {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--gray-200);
+      display: none;
+    }
+
+    .announcement-detail.show {
+      display: block;
+    }
+
+    .announcement-detail-content {
+      font-size: 0.875rem;
+      color: var(--gray-700);
+      line-height: 1.6;
+    }
+
+    .no-announcement {
+      text-align: center;
+      padding: 40px;
+      color: var(--gray-400);
+    }
+
+    .announcement-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .btn-read {
+      background: none;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .btn-read:hover {
+      background: var(--primary);
+      color: white;
     .platform-rating {
       margin-top: 8px;
       padding: 8px 12px;
@@ -98,6 +302,10 @@
       <a href="profile.html" id="profileLink" style="display: none;">个人资料</a>
     </div>
     <div class="nav-links">
+      <div class="announcement-icon" id="announcementIcon" style="position: relative; cursor: pointer; margin-right: 16px;">
+        <span style="font-size: 24px;">🔔</span>
+        <span id="announcementBadge" class="announcement-badge" style="display: none; position: absolute; top: -5px; right: -8px; background: #ef4444; color: white; font-size: 10px; padding: 2px 5px; border-radius: 10px; min-width: 16px; text-align: center;">新</span>
+      </div>
       <div id="userInfoArea" class="user-info">
         <span class="username" id="username"></span>
         <button class="logout-btn" id="loginLogoutBtn" onclick="handleLoginLogout()">登录</button>
@@ -107,11 +315,14 @@
 </nav>
 
 <div class="container">
-  <div class="hero-section">
-    <h1 class="hero-title">发现电影的魅力</h1>
-    <p class="hero-subtitle">搜索全球电影，查看本平台评分，收藏你的最爱</p>
+  <div class="carousel-container" style="position: relative; margin-bottom: 30px; overflow: hidden; border-radius: var(--radius-xl);">
+    <div id="carouselSlides" class="carousel-slides" style="display: flex; transition: transform 0.5s ease;">
+      <!-- 轮播图动态加载 -->
+    </div>
+    <button class="carousel-prev" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; z-index: 10;">❮</button>
+    <button class="carousel-next" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.5); color: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; z-index: 10;">❯</button>
+    <div class="carousel-dots" style="position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 10;"></div>
   </div>
-
   <div class="search-section">
     <div class="search-row">
       <div class="search-input-group">
@@ -168,7 +379,26 @@
   </div>
 </div>
 
-<!-- 收藏电影模态框 -->
+<div id="announcementModal" class="modal announcement-modal">
+  <div class="modal-content" style="max-width: 500px; max-height: 70vh; overflow-y: auto;">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <span>📢</span> 系统公告
+      </h3>
+      <button class="modal-close" id="closeAnnouncementModalBtn">&times;</button>
+    </div>
+    <div class="modal-body" id="announcementModalBody">
+      <div style="text-align: center; padding: 40px;">
+        <div class="spinner"></div> 加载中...
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="markReadBtn">标记已读</button>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ 新增：收藏电影模态框（完整版） -->
 <div id="collectModal" class="modal collect-modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -259,6 +489,11 @@
     updateUIByLoginStatus();
     bindEvents();
     searchMovies();
+    loadCarousels();
+    bindCarouselEvents();
+    loadReadAnnouncements();
+    loadAnnouncements();
+    bindAnnouncementEvents();
     initRatingSync();
   });
 
@@ -990,6 +1225,423 @@
       if (action.type === 'collect' && action.movieData) {
         openCollectModal(action.movieData);
       }
+    }
+  }
+
+  // ==================== 轮播图功能 ====================
+
+  let carouselData = [];
+  let currentSlide = 0;
+  let carouselInterval = null;
+  let isDragging = false;
+  let startX = 0;
+  let currentTranslate = 0;
+
+  /**
+   * 加载轮播图数据
+   */
+  async function loadCarousels() {
+    try {
+      const response = await fetch(`${API_BASE_URL}/admin/system/carousels/active`);
+      const result = await response.json();
+      if (result.code === 200 && result.data && result.data.length > 0) {
+        carouselData = result.data;
+        renderCarousel();
+        startCarouselAutoPlay();
+      } else {
+        // 没有轮播图时隐藏轮播图容器
+        const container = document.querySelector('.carousel-container');
+        if (container) container.style.display = 'none';
+      }
+    } catch (error) {
+      console.error('加载轮播图失败:', error);
+      const container = document.querySelector('.carousel-container');
+      if (container) container.style.display = 'none';
+    }
+  }
+
+  /**
+   * 渲染轮播图
+   */
+  function renderCarousel() {
+    const slidesContainer = document.getElementById('carouselSlides');
+    const dotsContainer = document.querySelector('.carousel-dots');
+
+    if (!slidesContainer || carouselData.length === 0) return;
+
+    // 渲染幻灯片
+    slidesContainer.innerHTML = carouselData.map((item, index) => `
+    <div class="carousel-slide" data-index="${index}">
+      <img src="${item.imageUrl}" alt="${escapeHtml(item.title || '轮播图')}" onerror="this.src='https://via.placeholder.com/1200x400?text=Image+Load+Error'">
+      ${item.title ? `
+        <div class="carousel-caption">
+          <h3>${escapeHtml(item.title)}</h3>
+          ${item.linkUrl ? `<p>点击查看详情</p>` : ''}
+        </div>
+      ` : ''}
+      ${item.linkUrl ? `<a href="${item.linkUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 5;"></a>` : ''}
+    </div>
+  `).join('');
+
+    // 绑定点击跳转（使用独立的事件绑定）
+    carouselData.forEach((item, index) => {
+      if (item.linkUrl) {
+        const slide = slidesContainer.querySelector(`.carousel-slide[data-index="${index}"]`);
+        if (slide) {
+          slide.style.cursor = 'pointer';
+          slide.addEventListener('click', () => {
+            window.open(item.linkUrl, '_blank');
+          });
+        }
+      }
+    });
+
+    // 渲染指示点
+    dotsContainer.innerHTML = carouselData.map((_, index) => `
+    <span class="carousel-dot ${index === 0 ? 'active' : ''}" data-index="${index}"></span>
+  `).join('');
+
+    // 绑定指示点点击事件
+    document.querySelectorAll('.carousel-dot').forEach(dot => {
+      dot.addEventListener('click', () => {
+        const index = parseInt(dot.dataset.index);
+        goToSlide(index);
+        resetAutoPlay();
+      });
+    });
+
+    // 设置初始位置
+    updateSlidePosition();
+  }
+
+  /**
+   * 切换到指定幻灯片
+   */
+  function goToSlide(index) {
+    if (index < 0) index = carouselData.length - 1;
+    if (index >= carouselData.length) index = 0;
+    currentSlide = index;
+    updateSlidePosition();
+    updateDots();
+  }
+
+  /**
+   * 更新幻灯片位置
+   */
+  function updateSlidePosition() {
+    const slidesContainer = document.getElementById('carouselSlides');
+    if (!slidesContainer) return;
+    slidesContainer.style.transform = `translateX(-${currentSlide * 100}%)`;
+  }
+
+  /**
+   * 更新指示点状态
+   */
+  function updateDots() {
+    document.querySelectorAll('.carousel-dot').forEach((dot, index) => {
+      if (index === currentSlide) {
+        dot.classList.add('active');
+      } else {
+        dot.classList.remove('active');
+      }
+    });
+  }
+
+  /**
+   * 下一张
+   */
+  function nextSlide() {
+    goToSlide(currentSlide + 1);
+    resetAutoPlay();
+  }
+
+  /**
+   * 上一张
+   */
+  function prevSlide() {
+    goToSlide(currentSlide - 1);
+    resetAutoPlay();
+  }
+
+  /**
+   * 启动自动轮播
+   */
+  function startCarouselAutoPlay() {
+    if (carouselInterval) clearInterval(carouselInterval);
+    carouselInterval = setInterval(() => {
+      nextSlide();
+    }, 5000); // 5秒切换一次
+  }
+
+  /**
+   * 重置自动轮播
+   */
+  function resetAutoPlay() {
+    if (carouselInterval) {
+      clearInterval(carouselInterval);
+      startCarouselAutoPlay();
+    }
+  }
+
+  /**
+   * 绑定轮播图控制按钮事件
+   */
+  function bindCarouselEvents() {
+    const prevBtn = document.querySelector('.carousel-prev');
+    const nextBtn = document.querySelector('.carousel-next');
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', () => {
+        prevSlide();
+        resetAutoPlay();
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', () => {
+        nextSlide();
+        resetAutoPlay();
+      });
+    }
+
+    // 触摸滑动支持（手机端）
+    const container = document.querySelector('.carousel-container');
+    if (container) {
+      container.addEventListener('touchstart', handleTouchStart);
+      container.addEventListener('touchmove', handleTouchMove);
+      container.addEventListener('touchend', handleTouchEnd);
+    }
+  }
+
+  /**
+   * 触摸开始
+   */
+  function handleTouchStart(e) {
+    isDragging = true;
+    startX = e.touches[0].clientX;
+    resetAutoPlay();
+  }
+
+  /**
+   * 触摸移动
+   */
+  function handleTouchMove(e) {
+    if (!isDragging) return;
+    const currentX = e.touches[0].clientX;
+    const diff = currentX - startX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0) {
+        prevSlide();
+      } else {
+        nextSlide();
+      }
+      isDragging = false;
+    }
+  }
+
+  /**
+   * 触摸结束
+   */
+  function handleTouchEnd() {
+    isDragging = false;
+  }
+
+
+
+  let announcements = [];
+  let readAnnouncementIds = new Set();
+
+  // 从 localStorage 读取已读公告ID
+  function loadReadAnnouncements() {
+    const stored = localStorage.getItem('readAnnouncements');
+    if (stored) {
+      try {
+        readAnnouncementIds = new Set(JSON.parse(stored));
+      } catch (e) {
+        readAnnouncementIds = new Set();
+      }
+    }
+  }
+
+  // 保存已读公告ID到 localStorage
+  function saveReadAnnouncements() {
+    localStorage.setItem('readAnnouncements', JSON.stringify([...readAnnouncementIds]));
+  }
+
+  // 加载公告列表
+  async function loadAnnouncements() {
+    try {
+      const token = localStorage.getItem('token');
+      let url;
+
+      if (token) {
+        // 已登录用户：使用带用户过滤的接口
+        url = `${API_BASE_URL}/admin/system/user/announcements`;
+      } else {
+        // 未登录用户：使用公开接口（只显示全体公告）
+        url = `${API_BASE_URL}/admin/system/public/announcements`;
+      }
+
+      const response = await fetch(url, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      const result = await response.json();
+      if (result.code === 200) {
+        announcements = result.data || [];
+        renderAnnouncementList();
+        updateAnnouncementBadge();
+      }
+    } catch (error) {
+      console.error('加载公告失败:', error);
+    }
+  }
+
+  // 更新公告小喇叭的红点提示
+  function updateAnnouncementBadge() {
+    const badge = document.getElementById('announcementBadge');
+    if (!badge) return;
+
+    // 计算未读公告数量
+    const unreadCount = announcements.filter(a => !readAnnouncementIds.has(a.id)).length;
+
+    if (unreadCount > 0) {
+      badge.style.display = 'block';
+      badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  // 渲染公告列表到弹窗
+  // 修改公告弹窗渲染函数
+  function renderAnnouncementList() {
+    const isLoggedIn = !!localStorage.getItem('token');
+    const container = document.getElementById('announcementModalBody');
+
+    if (announcements.length === 0) {
+      container.innerHTML = `<div class="no-announcement">📭<p>暂无公告</p></div>`;
+      return;
+    }
+
+    container.innerHTML = `
+    <div class="announcement-list">
+      ${announcements.map(announcement => `
+        <div class="announcement-item ${isLoggedIn && !readAnnouncementIds.has(announcement.id) ? 'unread' : ''}" data-id="${announcement.id}">
+          <div class="announcement-title">
+            <h4>${escapeHtml(announcement.title)}</h4>
+            <span class="announcement-time">${formatDate(announcement.createTime)}</span>
+          </div>
+          <div class="announcement-content">
+            ${escapeHtml(announcement.content.length > 80 ? announcement.content.substring(0, 80) + '...' : announcement.content)}
+          </div>
+          ${isLoggedIn ? `
+            <div class="announcement-actions">
+              <button class="btn-read" data-id="${announcement.id}" data-action="read">标记已读</button>
+              <button class="btn-read" data-id="${announcement.id}" data-action="detail">查看详情</button>
+            </div>
+          ` : ''}
+          <div class="announcement-detail" id="detail-${announcement.id}">
+            <div class="announcement-detail-content">${escapeHtml(announcement.content)}</div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+    // 只有登录用户才绑定标记已读事件
+    if (isLoggedIn) {
+      document.querySelectorAll('.btn-read[data-action="read"]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const id = parseInt(btn.dataset.id);
+          markAsRead(id);
+        });
+      });
+    }
+
+    // 查看详情按钮（登录/未登录都可以）
+    document.querySelectorAll('.btn-read[data-action="detail"]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = parseInt(btn.dataset.id);
+        toggleDetail(id);
+      });
+    });
+  }
+
+  // 标记公告为已读
+  function markAsRead(id) {
+    if (!readAnnouncementIds.has(id)) {
+      readAnnouncementIds.add(id);
+      saveReadAnnouncements();
+
+      // 更新UI
+      const item = document.querySelector(`.announcement-item[data-id="${id}"]`);
+      if (item) {
+        item.classList.remove('unread');
+      }
+      updateAnnouncementBadge();
+
+      showToast('已标记为已读', 'success');
+    }
+  }
+
+  // 展开/收起公告详情
+  function toggleDetail(id) {
+    const detailEl = document.getElementById(`detail-${id}`);
+    if (detailEl) {
+      detailEl.classList.toggle('show');
+    }
+  }
+
+  // 打开公告弹窗
+  function openAnnouncementModal() {
+    renderAnnouncementList();
+    document.getElementById('announcementModal').classList.add('show');
+  }
+
+  // 关闭公告弹窗
+  function closeAnnouncementModal() {
+    document.getElementById('announcementModal').classList.remove('show');
+  }
+
+  // 绑定公告相关事件
+  function bindAnnouncementEvents() {
+    const icon = document.getElementById('announcementIcon');
+    const closeBtn = document.getElementById('closeAnnouncementModalBtn');
+    const markReadBtn = document.getElementById('markReadBtn');
+
+    if (icon) {
+      icon.addEventListener('click', openAnnouncementModal);
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeAnnouncementModal);
+    }
+
+    if (markReadBtn) {
+      markReadBtn.addEventListener('click', () => {
+        // 一键标记所有公告为已读
+        announcements.forEach(a => {
+          if (!readAnnouncementIds.has(a.id)) {
+            readAnnouncementIds.add(a.id);
+          }
+        });
+        saveReadAnnouncements();
+        renderAnnouncementList();
+        updateAnnouncementBadge();
+        showToast('已标记所有公告为已读', 'success');
+      });
+    }
+
+    // 点击模态框背景关闭
+    const modal = document.getElementById('announcementModal');
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeAnnouncementModal();
+        }
+      });
     }
   }
 

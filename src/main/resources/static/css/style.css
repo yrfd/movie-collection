@@ -1851,3 +1851,98 @@ body {
     justify-content: space-between;
   }
 }
+
+/* 添加到 style.css */
+.btn-like, .btn-reply, .btn-edit, .btn-delete {
+  transition: all 0.2s;
+}
+
+.btn-like:hover { color: var(--primary) !important; }
+.btn-reply:hover { color: var(--primary) !important; }
+.btn-edit:hover { color: var(--primary) !important; }
+.btn-delete:hover { color: var(--danger) !important; }
+
+.btn-show-more {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: opacity 0.2s;
+}
+
+.btn-show-more:hover {
+  opacity: 0.7;
+}
+
+.collapsed-replies {
+  margin-left: 32px;
+  margin-top: 8px;
+}
+
+/* 评论项悬停效果 */
+.comment-item {
+  transition: all 0.2s ease;
+}
+
+.comment-item:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+/* 按钮悬停效果 */
+.btn-like:hover, .btn-reply:hover, .btn-edit:hover {
+  background: var(--gray-100) !important;
+  color: var(--primary) !important;
+}
+
+.btn-delete:hover {
+  background: #fee2e2 !important;
+  color: var(--danger) !important;
+}
+
+/* 折叠/展开按钮动画 */
+.toggle-replies-btn {
+  transition: all 0.2s;
+}
+
+.toggle-replies-btn:hover {
+  opacity: 0.7;
+  transform: translateX(2px);
+}
+
+.toggle-icon {
+  display: inline-block;
+  transition: transform 0.2s;
+}
+
+/* 回复区域动画 */
+.reply-input-area {
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 回复容器过渡效果 */
+.replies-container {
+  transition: all 0.2s;
+}
+
+/* 不同层级背景色定义 */
+:root {
+  --gray-50: #f9fafb;
+}
+
+.comment-item[data-level="0"] { background-color: var(--white); }
+.comment-item[data-level="1"] { background-color: var(--gray-50); }
+.comment-item[data-level="2"] { background-color: var(--gray-100); }
+.comment-item[data-level="3"] { background-color: var(--primary-light); }

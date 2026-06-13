@@ -2,6 +2,7 @@ package com.movie.entity;
 
 import lombok.Data;
 import java.util.Date;
+import java.util.List;
 
 @Data
 public class Comment {
@@ -20,8 +21,9 @@ public class Comment {
     private String username;
     private String movieName;
     private Double currentRating;
+    private String replyToUsername;
+    private List<Comment> replies;
 
-    // 提供一个 getRating 方法供前端使用（兼容性）
     public Double getRating() {
         return this.snapshotRating;
     }

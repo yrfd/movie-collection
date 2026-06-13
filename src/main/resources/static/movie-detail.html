@@ -220,64 +220,371 @@
     }
   }
 
-  // 加载评价列表
-  async function loadComments() {
-    try {
-      const result = await commentAPI.getCommentsByMovie(movieId);
-      if (result.code === 200) {
-        comments = result.data || [];
-        renderComments();
-      }
-    } catch (error) {
-      console.error('加载评论失败:', error);
-      showToast('加载评论失败', 'error');
-    }
-  }
 
   function renderComments() {
     const container = document.getElementById('commentsList');
     const currentUser = getCurrentUser();
+    const MAX_DEPTH = 1;
+
+    // 背景颜色数组
+    const bgColors = [
+      '',
+      'var(--gray-50)',
+      'var(--gray-100)',
+      'var(--primary-light)'
+    ];
 
     if (comments.length === 0) {
       container.innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">💬</div>
-          <p class="empty-state-text">暂无评价，成为第一个评价的人吧</p>
-        </div>
-      `;
+            <div class="empty-state">
+                <div class="empty-state-icon">💬</div>
+                <p class="empty-state-text">暂无评价，成为第一个评价的人吧</p>
+            </div>
+        `;
       return;
     }
 
-    container.innerHTML = comments.map(comment => {
-      const isOwner = currentUser && comment.userId === currentUser.userId;
-      return `
-        <div class="comment-item">
-          <div class="comment-header">
-            <div class="comment-user">
-              <div class="user-avatar">${(comment.username || '匿')[0]}</div>
-              <span>${maskUsername(comment.username)}</span>
-            </div>
-            <span class="comment-time">${formatDate(comment.createTime)}</span>
-          </div>
-          <div class="comment-rating">${renderStars(comment.currentRating, 'small')}</div>
-          <div class="comment-content">${escapeHtml(comment.content)}</div>
-          ${isOwner ? `
-            <div class="comment-actions">
-              <button class="btn btn-secondary btn-sm edit-comment" data-id="${comment.commentId}">编辑</button>
-              <button class="btn btn-danger btn-sm delete-comment" data-id="${comment.commentId}">删除</button>
-            </div>
-          ` : ''}
-        </div>
-      `;
-    }).join('');
+    // 构建用户名映射表
+    const userMap = new Map();
+    function buildUserMap(commentList) {
+      commentList.forEach(comment => {
+        userMap.set(comment.commentId, comment.username);
+        if (comment.replies && comment.replies.length > 0) {
+          buildUserMap(comment.replies);
+        }
+      });
+    }
+    buildUserMap(comments);
 
-    // 绑定编辑删除事件
-    document.querySelectorAll('.edit-comment').forEach(btn => {
-      btn.onclick = () => openEditCommentModal(parseInt(btn.dataset.id));
+    // 递归渲染评论
+    function renderCommentTree(comment, level = 0) {
+      const isOwner = currentUser && comment.userId === currentUser.userId;
+      const bgColorIndex = Math.min(level, bgColors.length - 1);
+      const bgColor = bgColors[bgColorIndex];
+      const bgStyle = bgColor ? `background-color: ${bgColor};` : '';
+      const indentStyle = level > 0 ? `margin-left: ${Math.min(level * 20, 60)}px;` : '';
+
+      // 获取点赞状态
+      const isLiked = comment.isLiked === true;
+      const likeIcon = isLiked ? '❤️' : '🤍';
+      const likeCount = comment.likeCount || 0;
+
+      // 获取被回复的用户名
+      let replyInfo = '';
+      if (comment.replyTo && comment.replyTo !== 0) {
+        const repliedUsername = userMap.get(comment.replyTo);
+        if (repliedUsername) {
+          replyInfo = `<span style="font-size: 11px; color: var(--gray-500); margin-left: 6px;">回复 @${maskUsername(repliedUsername)}</span>`;
+        }
+      }
+
+      // 处理子回复
+      let repliesHtml = '';
+      const hasReplies = comment.replies && comment.replies.length > 0;
+      const repliesId = `replies-${comment.commentId}`;
+
+      if (hasReplies) {
+        if (level < MAX_DEPTH) {
+          repliesHtml = `
+                    <div class="replies-container" id="${repliesId}">
+                        ${comment.replies.map(reply => renderCommentTree(reply, level + 1)).join('')}
+                    </div>
+                `;
+        } else {
+          repliesHtml = `
+                    <div class="collapsed-wrapper" style="margin-top: 8px;">
+                        <button class="toggle-replies-btn" data-target="${repliesId}" data-collapsed="true"
+                                style="background: none; border: none; color: var(--primary); font-size: 12px; cursor: pointer; padding: 4px 8px; display: flex; align-items: center; gap: 4px;">
+                            <span class="toggle-icon">▶</span> 展开 ${comment.replies.length} 条回复...
+                        </button>
+                        <div class="replies-container collapsed" id="${repliesId}" style="display: none;">
+                            ${comment.replies.map(reply => renderCommentTree(reply, level + 1)).join('')}
+                        </div>
+                    </div>
+                `;
+        }
+      }
+
+      return `
+            <div class="comment-item" data-comment-id="${comment.commentId}"
+                 style="border-radius: var(--radius-md); padding: 12px; margin-bottom: 12px; ${bgStyle} ${indentStyle} border: 1px solid var(--gray-200);">
+                <div class="comment-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 8px;">
+                    <div class="comment-user" style="display: flex; align-items: center; gap: 8px;">
+                        <div class="user-avatar" style="width: 28px; height: 28px; font-size: 12px; background: linear-gradient(135deg, var(--primary), var(--secondary)); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white;">${(comment.username || '匿')[0]}</div>
+                        <span style="font-weight: 500; font-size: 0.85rem;">${maskUsername(comment.username)}</span>
+                        ${replyInfo}
+                    </div>
+                    <span class="comment-time" style="font-size: 11px; color: var(--gray-400);">${formatDate(comment.createTime)}</span>
+                </div>
+                <div class="comment-rating" style="margin: 6px 0;">${renderStars(comment.currentRating, 'small')}</div>
+                <div class="comment-content" style="font-size: 0.85rem; line-height: 1.5; color: var(--gray-700);">${escapeHtml(comment.content)}</div>
+                <div class="comment-actions" style="display: flex; gap: 12px; margin-top: 10px;">
+                    <button class="btn-like" data-id="${comment.commentId}" data-liked="${isLiked}"
+                            style="background: none; border: none; font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 20px; transition: all 0.2s; color: ${isLiked ? '#ef4444' : 'var(--gray-500)'};">
+                        ${likeIcon} <span class="like-count">${likeCount}</span>
+                    </button>
+                    <button class="btn-reply" data-id="${comment.commentId}" data-username="${escapeHtml(comment.username)}"
+                            style="background: none; border: none; color: var(--gray-500); font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 20px; transition: all 0.2s;">
+                        💬 回复
+                    </button>
+                    ${isOwner ? `
+                        <button class="btn-edit" data-id="${comment.commentId}"
+                                style="background: none; border: none; color: var(--gray-500); font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 20px; transition: all 0.2s;">编辑</button>
+                        <button class="btn-delete" data-id="${comment.commentId}"
+                                style="background: none; border: none; color: var(--danger); font-size: 12px; cursor: pointer; padding: 4px 8px; border-radius: 20px; transition: all 0.2s;">删除</button>
+                    ` : ''}
+                </div>
+                <div class="reply-input-area" id="reply-area-${comment.commentId}" style="display: none; margin-top: 12px;">
+                    <div style="display: flex; gap: 8px;">
+                        <textarea id="reply-text-${comment.commentId}" rows="2"
+                                  style="flex: 1; padding: 8px; border: 1px solid var(--gray-300); border-radius: var(--radius-sm); font-size: 13px; resize: vertical;"
+                                  placeholder="回复 ${escapeHtml(comment.username)}..."></textarea>
+                        <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <button class="btn-submit-reply btn-primary btn-sm" data-id="${comment.commentId}" style="padding: 4px 12px;">发送</button>
+                            <button class="btn-cancel-reply btn-secondary btn-sm" data-id="${comment.commentId}" style="padding: 4px 12px;">取消</button>
+                        </div>
+                    </div>
+                </div>
+                ${repliesHtml}
+            </div>
+        `;
+    }
+
+    // 渲染顶级评论
+    container.innerHTML = comments.map(comment => renderCommentTree(comment, 0)).join('');
+
+    // ========== 使用事件委托绑定点赞事件（解决子评论问题） ==========
+    // 移除旧的事件监听器（如果有）
+    if (window._likeDelegateHandler) {
+      container.removeEventListener('click', window._likeDelegateHandler);
+    }
+
+    // 创建新的事件委托处理器
+    const likeDelegateHandler = async (e) => {
+      // 查找点击的按钮是否是 .btn-like 或其子元素
+      let targetBtn = e.target.closest('.btn-like');
+      if (!targetBtn) return;
+
+      e.stopPropagation();
+
+      const commentId = parseInt(targetBtn.dataset.id);
+      const token = localStorage.getItem('token');
+
+      if (!token) {
+        showToast('请先登录', 'warning');
+        return;
+      }
+
+      // 获取当前状态
+      const currentLikeSpan = targetBtn.querySelector('.like-count');
+      const currentHtml = targetBtn.innerHTML;
+      const currentIsLiked = currentHtml.includes('❤️');
+      const currentCount = parseInt(currentLikeSpan?.textContent || '0');
+
+      // 保存原始状态（用于失败回滚）
+      const originalHtml = targetBtn.innerHTML;
+
+      // 乐观更新：立即改变UI
+      if (currentIsLiked) {
+        targetBtn.innerHTML = `🤍 <span class="like-count">${currentCount - 1}</span>`;
+        targetBtn.style.color = 'var(--gray-500)';
+        targetBtn.dataset.liked = 'false';
+      } else {
+        targetBtn.innerHTML = `❤️ <span class="like-count">${currentCount + 1}</span>`;
+        targetBtn.style.color = '#ef4444';
+        targetBtn.dataset.liked = 'true';
+      }
+
+      targetBtn.disabled = true;
+      targetBtn.style.opacity = '0.6';
+
+      try {
+        const result = await commentAPI.likeComment(commentId);
+
+        if (result.code === 200) {
+          // 只更新数量，保持红心状态不变
+          const likeSpan = targetBtn.querySelector('.like-count');
+          if (likeSpan) {
+            likeSpan.textContent = result.data;
+          }
+          // 确保颜色正确
+          const shouldBeRed = result.liked;
+          if (shouldBeRed) {
+            targetBtn.style.color = '#ef4444';
+          } else {
+            targetBtn.style.color = 'var(--gray-500)';
+          }
+        } else {
+          // 失败时回滚
+          targetBtn.innerHTML = originalHtml;
+          targetBtn.style.color = currentIsLiked ? '#ef4444' : 'var(--gray-500)';
+          showToast(result.message || '操作失败', 'error');
+        }
+      } catch (error) {
+        console.error('点赞失败:', error);
+        // 失败时回滚
+        targetBtn.innerHTML = originalHtml;
+        targetBtn.style.color = currentIsLiked ? '#ef4444' : 'var(--gray-500)';
+        showToast('操作失败，请重试', 'error');
+      } finally {
+        targetBtn.disabled = false;
+        targetBtn.style.opacity = '1';
+      }
+    };
+
+    // 保存委托处理器引用
+    window._likeDelegateHandler = likeDelegateHandler;
+    container.addEventListener('click', likeDelegateHandler);
+
+    // ========== 绑定展开/折叠事件 ==========
+    document.querySelectorAll('.toggle-replies-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const targetId = btn.dataset.target;
+        const repliesContainer = document.getElementById(targetId);
+        const icon = btn.querySelector('.toggle-icon');
+        const isCollapsed = btn.dataset.collapsed === 'true';
+
+        if (repliesContainer) {
+          if (isCollapsed) {
+            repliesContainer.style.display = 'block';
+            if (icon) icon.textContent = '▼';
+            btn.dataset.collapsed = 'false';
+            btn.innerHTML = `<span class="toggle-icon">▼</span> 收起回复...`;
+          } else {
+            repliesContainer.style.display = 'none';
+            if (icon) icon.textContent = '▶';
+            btn.dataset.collapsed = 'true';
+            const countMatch = btn.innerHTML.match(/\d+/);
+            const count = countMatch ? countMatch[0] : '';
+            btn.innerHTML = `<span class="toggle-icon">▶</span> 展开 ${count} 条回复...`;
+          }
+        }
+      };
     });
-    document.querySelectorAll('.delete-comment').forEach(btn => {
-      btn.onclick = () => openDeleteCommentModal(parseInt(btn.dataset.id));
-    });
+
+    // ========== 绑定回复按钮事件（也使用事件委托） ==========
+    if (window._replyDelegateHandler) {
+      container.removeEventListener('click', window._replyDelegateHandler);
+    }
+
+    const replyDelegateHandler = (e) => {
+      let targetBtn = e.target.closest('.btn-reply');
+      if (!targetBtn) return;
+
+      e.stopPropagation();
+      const commentId = parseInt(targetBtn.dataset.id);
+      document.querySelectorAll('.reply-input-area').forEach(area => {
+        area.style.display = 'none';
+      });
+      const replyArea = document.getElementById(`reply-area-${commentId}`);
+      if (replyArea) {
+        replyArea.style.display = 'block';
+        const textarea = document.getElementById(`reply-text-${commentId}`);
+        if (textarea) textarea.focus();
+      }
+    };
+
+    window._replyDelegateHandler = replyDelegateHandler;
+    container.addEventListener('click', replyDelegateHandler);
+
+    // 取消回复按钮（使用事件委托）
+    if (window._cancelReplyDelegateHandler) {
+      container.removeEventListener('click', window._cancelReplyDelegateHandler);
+    }
+
+    const cancelReplyDelegateHandler = (e) => {
+      let targetBtn = e.target.closest('.btn-cancel-reply');
+      if (!targetBtn) return;
+
+      e.stopPropagation();
+      const commentId = parseInt(targetBtn.dataset.id);
+      const replyArea = document.getElementById(`reply-area-${commentId}`);
+      if (replyArea) replyArea.style.display = 'none';
+      const textarea = document.getElementById(`reply-text-${commentId}`);
+      if (textarea) textarea.value = '';
+    };
+
+    window._cancelReplyDelegateHandler = cancelReplyDelegateHandler;
+    container.addEventListener('click', cancelReplyDelegateHandler);
+
+    // 提交回复按钮（使用事件委托）
+    if (window._submitReplyDelegateHandler) {
+      container.removeEventListener('click', window._submitReplyDelegateHandler);
+    }
+
+    const submitReplyDelegateHandler = async (e) => {
+      let targetBtn = e.target.closest('.btn-submit-reply');
+      if (!targetBtn) return;
+
+      e.stopPropagation();
+      const parentCommentId = parseInt(targetBtn.dataset.id);
+      const textarea = document.getElementById(`reply-text-${parentCommentId}`);
+      const content = textarea.value.trim();
+
+      if (!content) {
+        showToast('请输入回复内容', 'error');
+        return;
+      }
+      if (content.length > 500) {
+        showToast('回复内容不能超过500字符', 'error');
+        return;
+      }
+
+      targetBtn.disabled = true;
+      targetBtn.textContent = '发送中...';
+
+      try {
+        const result = await commentAPI.replyComment(parentCommentId, content);
+        if (result.code === 200) {
+          showToast('回复成功', 'success');
+          textarea.value = '';
+          const replyArea = document.getElementById(`reply-area-${parentCommentId}`);
+          if (replyArea) replyArea.style.display = 'none';
+          await loadComments();
+        } else {
+          showToast(result.message || '回复失败', 'error');
+        }
+      } catch (error) {
+        console.error('回复失败:', error);
+        showToast('回复失败，请重试', 'error');
+      } finally {
+        targetBtn.disabled = false;
+        targetBtn.textContent = '发送';
+      }
+    };
+
+    window._submitReplyDelegateHandler = submitReplyDelegateHandler;
+    container.addEventListener('click', submitReplyDelegateHandler);
+
+    // ========== 绑定编辑删除事件（使用事件委托） ==========
+    if (window._editDelegateHandler) {
+      container.removeEventListener('click', window._editDelegateHandler);
+    }
+
+    const editDelegateHandler = (e) => {
+      let targetBtn = e.target.closest('.btn-edit');
+      if (!targetBtn) return;
+      e.stopPropagation();
+      openEditCommentModal(parseInt(targetBtn.dataset.id));
+    };
+
+    window._editDelegateHandler = editDelegateHandler;
+    container.addEventListener('click', editDelegateHandler);
+
+    if (window._deleteDelegateHandler) {
+      container.removeEventListener('click', window._deleteDelegateHandler);
+    }
+
+    const deleteDelegateHandler = (e) => {
+      let targetBtn = e.target.closest('.btn-delete');
+      if (!targetBtn) return;
+      e.stopPropagation();
+      openDeleteCommentModal(parseInt(targetBtn.dataset.id));
+    };
+
+    window._deleteDelegateHandler = deleteDelegateHandler;
+    container.addEventListener('click', deleteDelegateHandler);
   }
 
   function initCharCount() {
@@ -473,6 +780,45 @@
     document.getElementById('cancelDeleteCommentBtn')?.addEventListener('click', closeDeleteCommentModal);
     document.getElementById('confirmDeleteCommentBtn')?.addEventListener('click', confirmDeleteComment);
   }
+
+  async function loadComments() {
+    try {
+      const result = await commentAPI.getCommentsByMovie(movieId);
+      if (result.code === 200) {
+        comments = result.data || [];
+
+        // ========== 递归获取所有评论的点赞状态 ==========
+        const token = localStorage.getItem('token');
+        if (token && comments.length > 0) {
+          // 递归函数：处理所有层级的评论
+          async function fetchLikeStatus(commentList) {
+            for (let comment of commentList) {
+              try {
+                const likeStatus = await commentAPI.getLikeStatus(comment.commentId);
+                if (likeStatus.code === 200) {
+                  comment.isLiked = likeStatus.data;
+                }
+              } catch (e) {
+                comment.isLiked = false;
+              }
+              // 递归处理子评论
+              if (comment.replies && comment.replies.length > 0) {
+                await fetchLikeStatus(comment.replies);
+              }
+            }
+          }
+          await fetchLikeStatus(comments);
+        }
+
+        renderComments();
+      }
+    } catch (error) {
+      console.error('加载评论失败:', error);
+      showToast('加载评论失败', 'error');
+    }
+  }
+
+
 </script>
 </body>
 </html>

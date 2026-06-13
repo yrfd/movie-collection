@@ -3,11 +3,11 @@ package com.movie.controller;
 import com.movie.dto.ApiResponse;
 import com.movie.dto.CommentByTmdbRequest;
 import com.movie.dto.CommentRequest;
+import com.movie.dto.ReplyRequest;
 import com.movie.entity.Comment;
 import com.movie.entity.MovieCollection;
 import com.movie.mapper.MovieMapper;
 import com.movie.service.CommentService;
-
 import com.movie.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -42,10 +42,7 @@ public class CommentController {
     @GetMapping("/list/{movieId}")
     public ApiResponse<?> getComments(@PathVariable Integer movieId) {
         List<Comment> comments = commentService.getCommentsByMovie(movieId);
-
-        // 可选：为每个评论附加当前的收藏评分
         for (Comment comment : comments) {
-            // 获取用户当前的收藏评分
             MovieCollection collection = movieMapper.findCollectionByUserAndMovie(
                     comment.getUserId(), comment.getMovieId());
             if (collection != null) {
@@ -102,6 +99,24 @@ public class CommentController {
         return ApiResponse.error(400, (String) result.get("message"));
     }
 
+    @PostMapping("/reply")
+    public ApiResponse<?> replyComment(@RequestBody ReplyRequest request, HttpServletRequest req) {
+        Integer userId = getUserIdFromToken(req);
+        if (userId == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        Map<String, Object> result = commentService.replyComment(userId, request);
+        boolean success = (Boolean) result.get("success");
+        if (success) {
+            String message = (String) result.get("message");
+            Object commentId = result.get("commentId");
+            Map<String, Object> data = new HashMap<>();
+            data.put("commentId", commentId);
+            return ApiResponse.success(message, data);
+        }
+        return ApiResponse.error(400, (String) result.get("message"));
+    }
+
     @PostMapping("/addByTmdb")
     public ApiResponse<?> addCommentByTmdb(@RequestBody CommentByTmdbRequest request, HttpServletRequest req) {
         Integer userId = getUserIdFromToken(req);
@@ -133,5 +148,31 @@ public class CommentController {
         Map<String, Object> result = commentService.deleteComment(commentId);
         String message = (String) result.get("message");
         return ApiResponse.success(message);
+    }
+
+    @PostMapping("/like/{commentId}")
+    public ApiResponse<?> likeComment(@PathVariable Integer commentId, HttpServletRequest request) {
+        Integer userId = getUserIdFromToken(request);
+        if (userId == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        Map<String, Object> result = commentService.toggleLike(userId, commentId);
+        if ((Boolean) result.get("success")) {
+            return ApiResponse.success((String) result.get("message"), result.get("likeCount"));
+        }
+        return ApiResponse.error(400, (String) result.get("message"));
+    }
+
+    /**
+     * 获取用户对评论的点赞状态
+     */
+    @GetMapping("/like/status/{commentId}")
+    public ApiResponse<?> getLikeStatus(@PathVariable Integer commentId, HttpServletRequest request) {
+        Integer userId = getUserIdFromToken(request);
+        if (userId == null) {
+            return ApiResponse.success(false);
+        }
+        boolean isLiked = commentService.isLiked(userId, commentId);
+        return ApiResponse.success(isLiked);
     }
 }

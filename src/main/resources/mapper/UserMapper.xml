@@ -9,6 +9,7 @@
         <result column="password" property="password"/>
         <result column="email" property="email"/>
         <result column="avatar" property="avatar"/>
+        <result column="status" property="status"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
     </resultMap>
@@ -25,9 +26,14 @@
         SELECT * FROM user WHERE user_id = #{userId}
     </select>
 
+    <!-- ✅ 新增：通过用户名或邮箱查找 -->
+    <select id="findByUsernameOrEmail" resultMap="UserMap">
+        SELECT * FROM user WHERE username = #{account} OR email = #{account} LIMIT 1
+    </select>
+
     <insert id="insert" useGeneratedKeys="true" keyProperty="userId">
-        INSERT INTO user (username, password, email，status)
-        VALUES (#{username}, #{password}, #{email},1)
+        INSERT INTO user (username, password, email, status)
+        VALUES (#{username}, #{password}, #{email}, 1)
     </insert>
 
     <update id="updatePassword">
@@ -49,6 +55,12 @@
 
     <update id="updateUsername">
         UPDATE user SET username = #{username}, update_time = NOW()
+        WHERE user_id = #{userId}
+    </update>
+
+    <!-- ✅ 新增：更新头像 -->
+    <update id="updateAvatar">
+        UPDATE user SET avatar = #{avatarUrl}, update_time = NOW()
         WHERE user_id = #{userId}
     </update>
 </mapper>

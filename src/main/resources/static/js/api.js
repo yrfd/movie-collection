@@ -229,6 +229,22 @@ const commentAPI = {
     },
     getMyComments: () => {
         return request('/comment/my');
+    },
+    replyComment: (parentCommentId, content) => {
+        return request('/comment/reply', {
+            method: 'POST',
+            body: JSON.stringify({ parentCommentId, content })
+        });
+    },
+
+    likeComment: (commentId) => {
+        return request(`/comment/like/${commentId}`, {
+            method: 'POST'
+        });
+    },
+
+    getLikeStatus: (commentId) => {
+        return request(`/comment/like/status/${commentId}`);
     }
 };
 
@@ -249,6 +265,38 @@ const reviewAPI = {
             method: 'PUT',
             body: JSON.stringify({ tmdbId, privateReview })
         });
+    }
+};
+
+const systemAPI = {
+    // 公告
+    getAnnouncements: () => request('/admin/system/announcements'),
+    getActiveAnnouncements: () => request('/admin/system/announcements/active'),
+    saveAnnouncement: (data) => request('/admin/system/announcement', { method: 'POST', body: JSON.stringify(data) }),
+    deleteAnnouncement: (id) => request(`/admin/system/announcement/${id}`, { method: 'DELETE' }),
+
+    // 轮播图
+    getCarousels: () => request('/admin/system/carousels'),
+    getActiveCarousels: () => request('/admin/system/carousels/active'),
+    saveCarousel: (data) => request('/admin/system/carousel', { method: 'POST', body: JSON.stringify(data) }),
+    deleteCarousel: (id) => request(`/admin/system/carousel/${id}`, { method: 'DELETE' }),
+
+    // 日志
+    getLogs: (page, pageSize) => request(`/admin/system/logs?page=${page}&pageSize=${pageSize}`),
+
+    // 配置
+    getConfigs: () => request('/admin/system/configs'),
+    updateConfig: (key, value) => request('/admin/system/config', { method: 'PUT', body: JSON.stringify({ configKey: key, configValue: value }) }),
+
+    markAnnouncementRead: (announcementId) => {
+        return request(`/admin/system/announcement/${announcementId}/read`, {
+            method: 'POST'
+        });
+    },
+
+    // 获取用户公告列表（带阅读状态）
+    getUserAnnouncements: () => {
+        return request('/user/announcements');
     }
 };
 

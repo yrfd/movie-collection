@@ -3,18 +3,19 @@
 <mapper namespace="com.movie.mapper.AdminMapper">
 
     <!-- ========== 用户管理 ========== -->
-
     <select id="getAllUsers" resultType="com.movie.dto.AdminUserInfo">
         SELECT
             u.user_id as userId,
             u.username,
             u.email,
             u.create_time as createTime,
+            u.status,
             (SELECT COUNT(*) FROM movie_collection c WHERE c.user_id = u.user_id) as movieCount,
             (SELECT COUNT(*) FROM movie_comment c WHERE c.user_id = u.user_id) as commentCount
         FROM user u
         ORDER BY u.user_id DESC
     </select>
+
 
     <update id="disableUser">
         UPDATE user SET status = 0 WHERE user_id = #{userId}
@@ -69,7 +70,6 @@
             c.comment_id as commentId,
             u.username,
             m.movie_name as movieName,
-            c.rating,
             c.content,
             c.create_time as createTime
         FROM movie_comment c
@@ -113,5 +113,30 @@
         GROUP BY DATE(create_time)
         ORDER BY date ASC
     </select>
+
+    <!-- AdminMapper.xml - 添加以下 SQL -->
+
+    <select id="selectHotMovies" resultType="java.util.HashMap">
+        SELECT
+            m.movie_id as movieId,
+            m.movie_name as movieName,
+            m.avg_rating as avgRating,
+            (SELECT COUNT(*) FROM movie_comment c WHERE c.movie_id = m.movie_id) as commentCount
+        FROM movie_public m
+        ORDER BY commentCount DESC, avg_rating DESC
+            LIMIT #{limit}
+    </select>
+
+    <select id="selectActiveUsers" resultType="java.util.HashMap">
+        SELECT
+            u.user_id as userId,
+            u.username,
+            (SELECT COUNT(*) FROM movie_collection c WHERE c.user_id = u.user_id) as movieCount,
+            (SELECT COUNT(*) FROM movie_comment c WHERE c.user_id = u.user_id) as commentCount
+        FROM user u
+        ORDER BY (SELECT COUNT(*) FROM movie_comment c WHERE c.user_id = u.user_id) DESC
+            LIMIT #{limit}
+    </select>
+
 
 </mapper>

@@ -193,6 +193,22 @@ public class MovieController {
         return ApiResponse.success(movies);
     }
 
+    @PutMapping("/categories/{categoryId}")
+    public ApiResponse<?> updateCategory(@PathVariable Integer categoryId,
+                                         @RequestBody CategoryRequest request,
+                                         HttpServletRequest req) {
+        Integer userId = getUserIdFromToken(req);
+        if (userId == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+        Map<String, Object> result = movieService.updateCategory(userId, categoryId, request);
+        boolean success = (Boolean) result.get("success");
+        if (success) {
+            return ApiResponse.success((String) result.get("message"));
+        }
+        return ApiResponse.error(400, (String) result.get("message"));
+    }
+
     @PostMapping("/admin/update-actors")
     public ApiResponse<?> updateAllMoviesActors() {
         try {
@@ -202,5 +218,4 @@ public class MovieController {
             e.printStackTrace();
             return ApiResponse.error("更新失败: " + e.getMessage());
         }
-    }
 }

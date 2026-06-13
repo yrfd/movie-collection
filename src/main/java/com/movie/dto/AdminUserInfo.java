@@ -11,4 +11,5 @@ public class AdminUserInfo {
     private Date createTime;
     private Integer movieCount;
     private Integer commentCount;
+    private Integer status;
 }

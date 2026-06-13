@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.movie.mapper.SystemMapper">
+
+    <!-- ========== 公告管理 ========== -->
+    <select id="getAllAnnouncements" resultType="com.movie.entity.Announcement">
+        SELECT * FROM system_announcement ORDER BY priority DESC, create_time DESC
+    </select>
+
+    <select id="getActiveAnnouncements" resultType="com.movie.entity.Announcement">
+        SELECT * FROM system_announcement WHERE is_active = 1 ORDER BY priority DESC, create_time DESC
+    </select>
+
+    <select id="getAnnouncementById" resultType="com.movie.entity.Announcement">
+        SELECT * FROM system_announcement WHERE id = #{id}
+    </select>
+
+    <insert id="insertAnnouncement" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO system_announcement (title, content, is_active, priority)
+        VALUES (#{title}, #{content}, #{isActive}, #{priority})
+    </insert>
+
+    <update id="updateAnnouncement">
+        UPDATE system_announcement SET
+                                       title = #{title},
+                                       content = #{content},
+                                       is_active = #{isActive},
+                                       priority = #{priority},
+                                       target_type = #{targetType},
+                                       target_ids = #{targetIds}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteAnnouncement">
+        DELETE FROM system_announcement WHERE id = #{id}
+    </delete>
+
+    <!-- ========== 轮播图管理 ========== -->
+    <select id="getAllCarousels" resultType="com.movie.entity.Carousel">
+        SELECT * FROM carousel ORDER BY sort_order ASC, create_time DESC
+    </select>
+
+    <select id="getActiveCarousels" resultType="com.movie.entity.Carousel">
+        SELECT * FROM carousel WHERE is_active = 1 ORDER BY sort_order ASC, create_time DESC
+    </select>
+
+    <select id="getCarouselById" resultType="com.movie.entity.Carousel">
+        SELECT * FROM carousel WHERE id = #{id}
+    </select>
+
+    <insert id="insertCarousel" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO carousel (image_url, link_url, title, sort_order, is_active)
+        VALUES (#{imageUrl}, #{linkUrl}, #{title}, #{sortOrder}, #{isActive})
+    </insert>
+
+    <update id="updateCarousel">
+        UPDATE carousel SET
+                            image_url = #{imageUrl},
+                            link_url = #{linkUrl},
+                            title = #{title},
+                            sort_order = #{sortOrder},
+                            is_active = #{isActive}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteCarousel">
+        DELETE FROM carousel WHERE id = #{id}
+    </delete>
+
+    <!-- ========== 操作日志 ========== -->
+    <insert id="insertAdminLog">
+        INSERT INTO admin_log (admin_name, action, target, details, ip)
+        VALUES (#{adminName}, #{action}, #{target}, #{details}, #{ip})
+    </insert>
+
+    <select id="getAdminLogs" resultType="com.movie.entity.AdminLog">
+        SELECT * FROM admin_log ORDER BY create_time DESC LIMIT #{offset}, #{limit}
+    </select>
+
+    <select id="countAdminLogs" resultType="int">
+        SELECT COUNT(*) FROM admin_log
+    </select>
+
+    <!-- ========== 系统配置 ========== -->
+    <select id="getConfigByKey" resultType="com.movie.entity.SystemConfig">
+        SELECT * FROM system_config WHERE config_key = #{configKey}
+    </select>
+
+    <select id="getAllConfigs" resultType="com.movie.entity.SystemConfig">
+        SELECT * FROM system_config
+    </select>
+
+    <update id="updateConfig">
+        UPDATE system_config SET config_value = #{configValue} WHERE config_key = #{configKey}
+    </update>
+
+    <insert id="insertReadRecord">
+        INSERT INTO user_announcement_read (announcement_id, user_id, is_read, read_time)
+        VALUES (#{announcementId}, #{userId}, 1, NOW())
+    </insert>
+
+    <update id="updateReadRecord">
+        UPDATE user_announcement_read
+        SET is_read = 1, read_time = NOW()
+        WHERE announcement_id = #{announcementId} AND user_id = #{userId}
+    </update>
+
+    <select id="checkReadStatus" resultType="int">
+        SELECT COUNT(*) FROM user_announcement_read
+        WHERE announcement_id = #{announcementId} AND user_id = #{userId} AND is_read = 1
+    </select>
+
+    <select id="getAnnouncementsByUserId" resultType="com.movie.entity.Announcement">
+        SELECT
+            id,
+            title,
+            content,
+            is_active as isActive,
+            priority,
+            target_type as targetType,
+            target_ids as targetIds,
+            create_time as createTime,
+            update_time as updateTime
+        FROM system_announcement
+        WHERE is_active = 1
+          AND (
+            target_type = 'all'
+                OR (
+                target_type = 'user'
+                    AND FIND_IN_SET(#{userId}, target_ids) > 0
+                )
+            )
+        ORDER BY priority DESC, create_time DESC
+    </select>
+
+    <select id="getActiveAnnouncementsByType" resultType="com.movie.entity.Announcement">
+        SELECT
+            id, title, content, is_active as isActive,
+            priority, target_type as targetType, target_ids as targetIds,
+            create_time as createTime, update_time as updateTime
+        FROM system_announcement
+        WHERE is_active = 1 AND target_type = #{targetType}
+        ORDER BY priority DESC, create_time DESC
+    </select>
+</mapper>
