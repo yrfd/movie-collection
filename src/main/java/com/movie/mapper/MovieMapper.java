@@ -81,5 +81,6 @@ public interface MovieMapper {
     int updateCategoryName(@Param("categoryId") Integer categoryId,
                            @Param("categoryName") String categoryName);
 
-    
+    int updateMovieActors(@Param("movieId") Integer movieId, @Param("actors") String actors);
+    List<MoviePublic> findAllMovies();
 }

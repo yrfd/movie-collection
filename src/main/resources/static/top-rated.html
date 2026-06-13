@@ -96,6 +96,16 @@
             position: relative;
         }
 
+        /* 评分刷新动画 */
+        @keyframes ratingPulse {
+            0% { opacity: 0.5; transform: scale(0.98); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .rating-refreshing {
+            animation: ratingPulse 0.3s ease-out;
+        }
+
         @media (max-width: 768px) {
             .rankings-tab {
                 padding: 10px 16px;
@@ -121,7 +131,7 @@
         <div class="nav-menu">
             <a href="top-rated.html" class="active">🏆 排行榜</a>
             <a href="index.html">发现电影</a>
-            <a href="my-collections.html" id="myCollectionsLink" style="display: none;">我的收藏</a>
+            <a href="dashboard.html" id="myCollectionsLink" style="display: none;">我的收藏</a>
             <a href="my-comments.html" id="myCommentsLink" style="display: none;">我的评价</a>
             <a href="profile.html" id="profileLink" style="display: none;">个人资料</a>
         </div>
@@ -137,12 +147,17 @@
 <div class="container">
     <div class="rank-header">
         <h2>🏆 电影排行榜</h2>
-        <div class="rank-stats">基于全网用户评分和评论统计</div>
+        <div class="rank-stats">基于全网用户评分和评论统计 | 评分实时更新</div>
     </div>
 
     <div class="rankings-tabs">
         <button class="rankings-tab active" data-type="rating">⭐ 按评分排行</button>
         <button class="rankings-tab" data-type="popular">🔥 按热门排行</button>
+    </div>
+
+    <!-- 实时刷新提示 -->
+    <div id="refreshHint" style="display: none; text-align: center; margin-bottom: 16px; font-size: 12px; color: var(--primary);">
+        🔄 检测到评分更新，排行榜已自动刷新
     </div>
 
     <div id="moviesGrid" class="movies-grid"></div>
@@ -189,15 +204,19 @@
 <script>
     let currentRankingType = 'rating';  // 'rating' 或 'popular'
     let currentMovies = [];
+    let currentRankingData = [];         // 存储当前排行榜原始数据
     let isLoading = false;
     let pendingAction = null;
     let pendingMovieData = null;
+    let refreshTimeout = null;
+    let isRefreshing = false;
 
     // 页面初始化
     document.addEventListener('DOMContentLoaded', () => {
         updateUIByLoginStatus();
         bindEvents();
         loadRankings();
+        initRatingSync();
     });
 
     function updateUIByLoginStatus() {
@@ -258,6 +277,15 @@
         document.getElementById('closeDetailModalBtn').addEventListener('click', () => {
             document.getElementById('movieDetailModal').classList.remove('show');
         });
+
+        // 点击模态框背景关闭
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('show');
+                }
+            });
+        });
     }
 
     function showLoginPrompt(message, action, movieData = null) {
@@ -271,6 +299,86 @@
         pendingAction = null;
         pendingMovieData = null;
         document.getElementById('loginPromptModal').classList.remove('show');
+    }
+
+    // 初始化评分同步监听
+    function initRatingSync() {
+        // 监听全局评分更新事件
+        window.addEventListener('rating-updated', (event) => {
+            const { tmdbId, newRating, ratingCount } = event.detail;
+            console.log(`📢 排行榜收到评分更新: tmdbId=${tmdbId}, 新评分=${newRating}`);
+
+            // 显示刷新提示
+            showRefreshHint();
+
+            // 更新本地数据
+            updateMovieRatingInData(tmdbId, newRating, ratingCount);
+
+            // 防抖刷新UI
+            if (refreshTimeout) clearTimeout(refreshTimeout);
+            refreshTimeout = setTimeout(() => {
+                renderMovies(currentRankingData);
+                refreshTimeout = null;
+            }, 100);
+        });
+
+        // 监听页面可见性变化，恢复时刷新
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && currentRankingData.length > 0) {
+                console.log('页面恢复可见，刷新排行榜评分');
+                refreshAllRatings();
+            }
+        });
+    }
+
+    // 显示刷新提示（2秒后自动隐藏）
+    function showRefreshHint() {
+        const hint = document.getElementById('refreshHint');
+        hint.style.display = 'block';
+        setTimeout(() => {
+            hint.style.display = 'none';
+        }, 2000);
+    }
+
+    // 更新本地数据中的电影评分
+    function updateMovieRatingInData(tmdbId, newRating, ratingCount) {
+        const movie = currentRankingData.find(m => m.tmdbId == tmdbId);
+        if (movie) {
+            movie.avgRating = newRating || 0;
+            movie.ratingCount = ratingCount || 0;
+            console.log(`✅ 更新本地数据: ${movie.movieName} -> ${newRating}分`);
+        }
+    }
+
+    // 刷新所有电影的评分（从服务器获取最新数据）
+    async function refreshAllRatings() {
+        if (isRefreshing || currentRankingData.length === 0) return;
+        isRefreshing = true;
+
+        console.log('🔄 开始刷新所有电影评分...');
+
+        // 批量刷新评分（使用Promise.all并发请求）
+        const refreshPromises = currentRankingData.map(async (movie) => {
+            if (movie.tmdbId) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/comment/averageByTmdb/${movie.tmdbId}`);
+                    const result = await response.json();
+                    if (result.code === 200 && result.data) {
+                        movie.avgRating = result.data.avgRating || 0;
+                        movie.ratingCount = result.data.count || 0;
+                    }
+                } catch (error) {
+                    console.error(`刷新评分失败: ${movie.movieName}`, error);
+                }
+            }
+        });
+
+        await Promise.all(refreshPromises);
+
+        // 重新渲染
+        renderMovies(currentRankingData);
+        isRefreshing = false;
+        console.log('✅ 所有评分刷新完成');
     }
 
     // 加载排行榜数据
@@ -288,17 +396,20 @@
             const result = await response.json();
 
             if (result.code === 200 && result.data && result.data.length > 0) {
+                currentRankingData = result.data;
                 currentMovies = result.data;
                 renderMovies(currentMovies);
             } else {
                 document.getElementById('moviesGrid').innerHTML = '';
                 document.getElementById('emptyState').style.display = 'block';
+                currentRankingData = [];
             }
         } catch (error) {
             console.error('加载排行榜失败:', error);
             showToast('加载排行榜失败，请检查网络', 'error');
             document.getElementById('moviesGrid').innerHTML = '';
             document.getElementById('emptyState').style.display = 'block';
+            currentRankingData = [];
         } finally {
             isLoading = false;
             document.getElementById('loadingIndicator').style.display = 'none';
@@ -323,18 +434,15 @@
             let statsHtml = '';
             if (currentRankingType === 'rating') {
                 const avgRating = movie.avgRating || 0;
-                statsHtml = `<div class="rank-stats-info">⭐ ${avgRating.toFixed(1)} 分 (${movie.ratingCount || 0}人评价)</div>`;
+                statsHtml = `<div class="rank-stats-info" id="rating-stats-${movie.tmdbId || movie.movieId}">⭐ ${avgRating.toFixed(1)} 分 (${movie.ratingCount || 0}人评价)</div>`;
             } else {
-                statsHtml = `<div class="rank-stats-info">💬 ${movie.commentCount || 0} 条评论</div>`;
+                statsHtml = `<div class="rank-stats-info" id="rating-stats-${movie.tmdbId || movie.movieId}">💬 ${movie.commentCount || 0} 条评论</div>`;
             }
 
-            // 重要：确保传递给详情页的是正确的 ID
-            // 优先使用 tmdbId，如果没有则使用 movieId（但 movieId 是本地数据库ID，可能不是TMDB真实ID）
             const detailId = movie.tmdbId || movie.movieId;
-            console.log('电影:', movie.movieName, 'tmdbId:', movie.tmdbId, '使用的ID:', detailId);
 
             return `
-            <div class="card movie-card" data-movie-id="${movie.movieId}">
+            <div class="card movie-card" data-movie-id="${movie.movieId}" data-tmdb-id="${detailId}">
                 <div class="rank-badge ${rankClass}">${rank}</div>
                 <img src="${movie.posterUrl || 'https://via.placeholder.com/300x450?text=No+Poster'}"
                      class="movie-poster"
@@ -346,7 +454,7 @@
                     <p class="movie-year">${movie.year || '未知年份'}</p>
                     ${statsHtml}
                     <div style="margin-top: 12px;">
-                        <button class="btn btn-primary btn-sm view-detail" data-id="${detailId}">查看详情</button>
+                        <button class="btn btn-primary btn-sm view-detail" data-id="${detailId}" data-movie-name="${escapeHtml(movie.movieName)}">查看详情</button>
                     </div>
                 </div>
             </div>
@@ -357,45 +465,43 @@
         document.querySelectorAll('.movie-card').forEach(card => {
             const viewBtn = card.querySelector('.view-detail');
             const detailId = viewBtn.dataset.id;
+            const movieName = viewBtn.dataset.movieName;
 
             card.addEventListener('click', (e) => {
                 if (e.target.classList.contains('view-detail') || e.target.classList.contains('btn')) return;
-                showMovieDetail(detailId);
+                showMovieDetail(detailId, movieName);
             });
 
             viewBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                showMovieDetail(detailId);
+                showMovieDetail(detailId, movieName);
             });
         });
     }
 
     // 显示电影详情
-    async function showMovieDetail(tmdbId) {
+    async function showMovieDetail(tmdbId, movieName) {
         const modal = document.getElementById('movieDetailModal');
         const titleElem = document.getElementById('detailTitle');
         const bodyElem = document.getElementById('detailBody');
 
-        titleElem.textContent = '加载中...';
+        titleElem.textContent = movieName || '加载中...';
         bodyElem.innerHTML = '<div style="text-align: center; padding: 40px;"><div class="spinner"></div> 加载电影详情...</div>';
         modal.classList.add('show');
 
         try {
-            // 获取电影详情
             const detailResponse = await fetch(`${API_BASE_URL}/tmdb/movie/${tmdbId}`);
             const movie = await detailResponse.json();
 
-            // 获取收藏状态（如果已登录）
             let isCollected = false;
             const token = localStorage.getItem('token');
             if (token) {
                 const collectionsResult = await movieAPI.getAllMovies();
                 if (collectionsResult.code === 200) {
-                    isCollected = collectionsResult.data.some(m => m.tmdbId === tmdbId);
+                    isCollected = collectionsResult.data.some(m => m.tmdbId == tmdbId);
                 }
             }
 
-            // 解析导演和演员
             let director = '未知';
             let cast = [];
             if (movie.credits && movie.credits.crew) {
@@ -406,29 +512,42 @@
                 cast = movie.credits.cast.slice(0, 5).map(actor => actor.name);
             }
 
-            titleElem.textContent = movie.title || '电影详情';
-            bodyElem.innerHTML = `
-        <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-          <img src="${movie.poster_path ? 'https://image.tmdb.org/t/p/w300' + movie.poster_path : 'https://via.placeholder.com/200x300?text=No+Poster'}"
-               style="width: 200px; border-radius: var(--radius-md); object-fit: cover;">
-          <div style="flex: 1; min-width: 200px;">
-            <p><strong>原名：</strong> ${escapeHtml(movie.original_title || movie.title)}</p>
-            <p><strong>上映日期：</strong> ${movie.release_date || '未知'}</p>
-            <p><strong>导演：</strong> ${escapeHtml(director)}</p>
-            <p><strong>主演：</strong> ${cast.length > 0 ? cast.map(escapeHtml).join('、') : '暂无信息'}</p>
-            <p><strong>评分：</strong> ${movie.vote_average ? movie.vote_average.toFixed(1) : '暂无'} / 10</p>
-            <p><strong>类型：</strong> ${movie.genres ? movie.genres.map(g => g.name).join('、') : '未知'}</p>
-            <p><strong>简介：</strong> ${escapeHtml(movie.overview || '暂无简介')}</p>
-            <div style="margin-top: 20px;">
-              <button class="btn btn-primary" id="collectFromDetailBtn" ${isCollected ? 'disabled style="background: var(--gray-400); cursor: not-allowed;"' : ''}>
-                ${isCollected ? '✓ 已收藏' : '⭐ 收藏到我的电影'}
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
+            // 获取本平台评分
+            let platformRatingHtml = '<span>加载中...</span>';
+            try {
+                const ratingResponse = await fetch(`${API_BASE_URL}/comment/averageByTmdb/${tmdbId}`);
+                const ratingResult = await ratingResponse.json();
+                if (ratingResult.code === 200 && ratingResult.data && ratingResult.data.avgRating > 0) {
+                    platformRatingHtml = `⭐ ${ratingResult.data.avgRating.toFixed(1)} 分 (${ratingResult.data.count}人评价)`;
+                } else {
+                    platformRatingHtml = '暂无评分';
+                }
+            } catch (error) {
+                platformRatingHtml = '暂无评分';
+            }
 
-            // 绑定收藏按钮事件
+            titleElem.textContent = movie.title || movieName;
+            bodyElem.innerHTML = `
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <img src="${movie.poster_path ? 'https://image.tmdb.org/t/p/w300' + movie.poster_path : 'https://via.placeholder.com/200x300?text=No+Poster'}"
+                         style="width: 200px; border-radius: var(--radius-md); object-fit: cover;">
+                    <div style="flex: 1; min-width: 200px;">
+                        <p><strong>原名：</strong> ${escapeHtml(movie.original_title || movie.title)}</p>
+                        <p><strong>上映日期：</strong> ${movie.release_date || '未知'}</p>
+                        <p><strong>导演：</strong> ${escapeHtml(director)}</p>
+                        <p><strong>主演：</strong> ${cast.length > 0 ? cast.map(escapeHtml).join('、') : '暂无信息'}</p>
+                        <p><strong>本平台评分：</strong> ${platformRatingHtml}</p>
+                        <p><strong>类型：</strong> ${movie.genres ? movie.genres.map(g => g.name).join('、') : '未知'}</p>
+                        <p><strong>简介：</strong> ${escapeHtml(movie.overview || '暂无简介')}</p>
+                        <div style="margin-top: 20px;">
+                            <button class="btn btn-primary" id="collectFromDetailBtn" ${isCollected ? 'disabled style="background: var(--gray-400); cursor: not-allowed;"' : ''}>
+                                ${isCollected ? '✓ 已收藏' : '⭐ 收藏到我的电影'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
             if (!isCollected) {
                 const collectBtn = document.getElementById('collectFromDetailBtn');
                 if (collectBtn) {
@@ -437,6 +556,7 @@
                         if (!token) {
                             showLoginPrompt('收藏电影需要登录，请先登录', { type: 'collect', movieData: { id: movie.id, title: movie.title, poster_path: movie.poster_path, release_date: movie.release_date } });
                         } else {
+                            modal.classList.remove('show');
                             collectMovie({ id: movie.id, title: movie.title, poster_path: movie.poster_path, release_date: movie.release_date });
                         }
                     });
@@ -486,7 +606,6 @@
             const result = await movieAPI.addMovie(movieData);
             if (result.code === 200) {
                 showToast('收藏成功！', 'success');
-                document.getElementById('movieDetailModal').classList.remove('show');
             } else {
                 showToast(result.message || '收藏失败', 'error');
             }

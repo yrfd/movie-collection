@@ -22,4 +22,5 @@ public class MovieCollection {
     private String posterUrl;
     private String genre;
     private String region;
+    private String actors;
 }

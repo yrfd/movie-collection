@@ -208,4 +208,14 @@ public class MovieController {
         }
         return ApiResponse.error(400, (String) result.get("message"));
     }
+
+    @PostMapping("/admin/update-actors")
+    public ApiResponse<?> updateAllMoviesActors() {
+        try {
+            int updated = movieService.updateAllMoviesActors();
+            return ApiResponse.success("成功更新 " + updated + " 部电影的演员信息");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ApiResponse.error("更新失败: " + e.getMessage());
+        }
 }

@@ -15,6 +15,7 @@ public class Comment {
     private Boolean isEdited;
     private Date createTime;
     private Date updateTime;
+    private Double snapshotRating;
 
     // 关联字段
     private String username;
@@ -22,4 +23,8 @@ public class Comment {
     private Double currentRating;
     private String replyToUsername;
     private List<Comment> replies;
+
+    public Double getRating() {
+        return this.snapshotRating;
+    }
 }

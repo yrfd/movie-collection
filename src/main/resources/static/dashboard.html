@@ -68,6 +68,18 @@
       font-size: 0.9rem;
     }
 
+    .movie-actors {
+      font-size: 0.75rem;
+      color: var(--gray-600);
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+
+    .movie-actors strong {
+      color: var(--gray-700);
+      margin-right: 4px;
+    }
+
     .category-count {
       background: var(--gray-200);
       padding: 2px 8px;
@@ -317,13 +329,10 @@
 
         <div id="advancedFilters" style="display: none;">
           <div class="advanced-filters">
-            <!-- 导演/演员筛选 -->
             <div class="filter-item">
               <label class="form-label">导演/演员</label>
               <input type="text" id="filterDirector" class="form-input" placeholder="输入导演或演员姓名">
             </div>
-
-            <!-- 评分区间 - 更细致的选项 -->
             <div class="filter-item">
               <label class="form-label">评分区间</label>
               <select id="filterRating" class="form-select">
@@ -337,8 +346,6 @@
                 <option value="1">1星及以上 (较差)</option>
               </select>
             </div>
-
-            <!-- 观影状态筛选 - 新增 -->
             <div class="filter-item">
               <label class="form-label">观影状态</label>
               <select id="filterWatchStatus" class="form-select">
@@ -348,8 +355,6 @@
                 <option value="不感兴趣">不感兴趣</option>
               </select>
             </div>
-
-            <!-- 年份区间筛选 - 新增 -->
             <div class="filter-item">
               <label class="form-label">年份区间</label>
               <select id="filterYearRange" class="form-select">
@@ -363,8 +368,6 @@
                 <option value="-1970">1970年以前</option>
               </select>
             </div>
-
-            <!-- 地区 - 扩充选项 -->
             <div class="filter-item">
               <label class="form-label">地区</label>
               <select id="filterRegion" class="form-select">
@@ -387,8 +390,6 @@
                 <option value="中国台湾">🇨🇳 中国台湾</option>
               </select>
             </div>
-
-            <!-- 类型 - 扩充选项 -->
             <div class="filter-item">
               <label class="form-label">类型</label>
               <select id="filterGenre" class="form-select">
@@ -418,8 +419,6 @@
                 <option value="黑色电影">🖤 黑色电影</option>
               </select>
             </div>
-
-            <!-- 排序方式 - 新增 -->
             <div class="filter-item">
               <label class="form-label">排序方式</label>
               <select id="filterSortBy" class="form-select">
@@ -453,7 +452,6 @@
 </div>
 
 <!-- 添加/编辑电影模态框 -->
-<!-- 编辑电影模态框（修改版：电影信息只读，只允许编辑个人内容） -->
 <div id="movieModal" class="modal">
   <div class="modal-content">
     <div class="modal-header">
@@ -467,7 +465,6 @@
         <!-- 电影基本信息区域（只读显示） -->
         <div class="movie-info-display" style="background: var(--gray-100); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
           <div style="display: flex; gap: 16px; flex-wrap: wrap;">
-            <!-- 海报缩略图 -->
             <img id="displayPoster" src="" alt="电影海报" style="width: 80px; height: 120px; object-fit: cover; border-radius: var(--radius-sm);">
             <div style="flex: 1;">
               <h4 id="displayMovieName" style="margin: 0 0 8px 0; color: var(--primary);"></h4>
@@ -502,7 +499,6 @@
             <label class="form-label">私人笔记 <span style="font-size: 0.75rem; color: var(--gray-500);">（仅自己可见）</span></label>
             <textarea id="privateReview" class="form-textarea" placeholder="写下你的私人观影感受..." rows="4"></textarea>
           </div>
-          <div id="tmdbResults" style="max-height: 300px; overflow-y: auto;"></div>
         </div>
 
         <div class="form-group">
@@ -510,26 +506,6 @@
           <select id="categoryId" class="form-select">
             <option value="">默认收藏</option>
           </select>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">个人评分</label>
-          <div id="ratingStars"></div>
-          <input type="hidden" id="personalRating" value="0">
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">观影状态</label>
-          <select id="watchStatus" class="form-select">
-            <option value="想看">想看</option>
-            <option value="已看">已看</option>
-            <option value="不感兴趣">不感兴趣</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">私人影评</label>
-          <textarea id="privateReview" class="form-textarea" placeholder="写下你的私人观影感受（仅自己可见）"></textarea>
         </div>
       </form>
     </div>
@@ -790,7 +766,6 @@
     const container = document.getElementById('categoryList');
     if (!container) return;
 
-    // 使用 allMovies 统计全部电影数量，而不是 currentMovies
     const totalMovieCount = allMovies.length;
 
     let html = `
@@ -804,7 +779,6 @@
     `;
 
     categories.forEach(cat => {
-      // 使用 allMovies 统计每个文件夹的电影数量
       const count = allMovies.filter(m => m.categoryId === cat.categoryId).length;
       html += `
         <div class="category-item ${currentCategoryId === cat.categoryId ? 'active' : ''}" data-category-id="${cat.categoryId}">
@@ -823,7 +797,6 @@
 
     container.innerHTML = html;
 
-    // 绑定文件夹点击事件
     document.querySelectorAll('.category-item[data-category-id]').forEach(item => {
       item.addEventListener('click', async (e) => {
         if (e.target.classList.contains('category-edit-btn') ||
@@ -841,7 +814,6 @@
       });
     });
 
-    // 绑定编辑按钮
     document.querySelectorAll('.category-edit-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -851,7 +823,6 @@
       });
     });
 
-    // 绑定删除按钮
     document.querySelectorAll('.category-delete-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -863,16 +834,13 @@
 
   async function loadMoviesByCategory() {
     if (currentCategoryId === null) {
-      // 全部电影：使用已加载的 allMovies
       currentMovies = allMovies;
       currentPage = 1;
       renderMovies();
-      renderCategoryList();  // 重新渲染（数量统计仍用 allMovies）
+      renderCategoryList();
     } else {
       try {
         const result = await movieAPI.getMoviesByCategory(currentCategoryId);
-        console.log('按文件夹查询响应:', result);
-
         let movies = [];
         if (result.code === 200 && result.data) {
           movies = Array.isArray(result.data) ? result.data : [];
@@ -881,11 +849,10 @@
         } else if (Array.isArray(result)) {
           movies = result;
         }
-
         currentMovies = movies;
         currentPage = 1;
         renderMovies();
-        renderCategoryList();  // 重新渲染（数量统计仍用 allMovies）
+        renderCategoryList();
       } catch (error) {
         console.error('加载失败:', error);
         showToast('加载失败', 'error');
@@ -967,13 +934,10 @@
   }
 
   async function forceRefresh() {
-    // 重新加载全部电影（更新 allMovies）
     const result = await movieAPI.getAllMovies();
     if (result.code === 200) {
       allMovies = result.data || [];
-      // 重新加载分类列表
       await loadCategories();
-      // 重新加载当前视图
       await loadMoviesByCategory();
     }
   }
@@ -983,7 +947,7 @@
       const result = await movieAPI.moveToCategory(collectionId, targetCategoryId);
       if (result.code === 200) {
         showToast('移动成功', 'success');
-        await forceRefresh();  // 使用 forceRefresh 而不是单独的刷新
+        await forceRefresh();
       } else {
         showToast(result.message || '移动失败', 'error');
       }
@@ -1005,7 +969,7 @@
       if (isSuccess) {
         showToast(`成功移动 ${pendingMoveCollectionIds.length} 部电影`, 'success');
         exitBatchMode();
-        await forceRefresh();  // 使用 forceRefresh
+        await forceRefresh();
       } else {
         showToast(result.message || '移动失败', 'error');
       }
@@ -1046,13 +1010,13 @@
     try {
       const result = await movieAPI.getAllMovies();
       if (result.code === 200) {
-        allMovies = result.data || [];           // 保存全部电影
+        allMovies = result.data || [];
         if (currentCategoryId === null) {
-          currentMovies = allMovies;            // 只有在"全部"视图时才同步
+          currentMovies = allMovies;
         }
         currentPage = 1;
         renderMovies();
-        renderCategoryList();                     // 重新渲染文件夹列表（使用 allMovies 统计）
+        renderCategoryList();
       } else {
         showToast(result.message || '加载失败', 'error');
       }
@@ -1089,6 +1053,7 @@
         <div class="movie-info">
           <h3 class="movie-title">${escapeHtml(movie.movieName)}</h3>
           <p class="movie-director"><strong>导演：</strong>${escapeHtml(movie.director || '未知')}</p>
+          <p class="movie-actors"><strong>主演：</strong>${escapeHtml(movie.actors || '暂无信息')}</p>
           <p class="movie-year"><strong>年份：</strong>${movie.year || '未知'}</p>
           <p class="movie-genre"><strong>类型：</strong>${escapeHtml(movie.genre || '未知')}</p>
           <p class="movie-region"><strong>地区：</strong>${escapeHtml(movie.region || '未知')}</p>
@@ -1105,7 +1070,6 @@
       </div>
     `).join('');
 
-    // 绑定卡片点击事件（跳转详情页）
     document.querySelectorAll('.movie-card').forEach(card => {
       const movieId = card.dataset.movieid;
       card.addEventListener('click', (e) => {
@@ -1120,7 +1084,6 @@
       });
     });
 
-    // 绑定编辑按钮
     document.querySelectorAll('.edit-movie').forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
@@ -1128,7 +1091,6 @@
       };
     });
 
-    // 绑定删除按钮
     document.querySelectorAll('.delete-movie').forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
@@ -1136,7 +1098,6 @@
       };
     });
 
-    // 绑定移动按钮
     document.querySelectorAll('.move-movie').forEach(btn => {
       btn.onclick = (e) => {
         e.stopPropagation();
@@ -1144,7 +1105,6 @@
       };
     });
 
-    // 批量选择复选框
     if (batchMode) {
       document.querySelectorAll('.movie-select').forEach(cb => {
         cb.checked = selectedCollectionIds.has(parseInt(cb.dataset.id));
@@ -1287,20 +1247,16 @@
       region: document.getElementById('filterRegion')?.value || '',
       genre: document.getElementById('filterGenre')?.value || '',
       categoryId: currentCategoryId,
-      // 新增参数
       watchStatus: document.getElementById('filterWatchStatus')?.value || '',
-      yearRange: document.getElementById('filterYearRange')?.value || '',
       sortBy: document.getElementById('filterSortBy')?.value || ''
     };
 
-    // 过滤空值
     Object.keys(params).forEach(key => {
       if (!params[key] || params[key] === '全部' || params[key] === '') {
         delete params[key];
       }
     });
 
-    // 如果有年份区间参数，转换为年份范围
     if (params.yearRange) {
       const [startYear, endYear] = params.yearRange.split('-');
       if (startYear && endYear) {
@@ -1312,25 +1268,13 @@
       delete params.yearRange;
     }
 
-    // 如果有排序参数
-    if (params.sortBy) {
-      // 排序参数需要后端支持，或者前端排序
-      // 这里先传给后端，如果后端不支持，可以在前端排序
-      // delete params.sortBy; // 如果后端不支持，取消注释
-    }
-
-    console.log('筛选参数:', params);
-
     try {
       const result = await movieAPI.searchMovies(params);
       if (result.code === 200) {
         currentMovies = result.data || [];
-
-        // 如果后端不支持排序，前端进行排序
         if (params.sortBy && currentMovies.length > 0) {
           currentMovies = sortMoviesFrontend(currentMovies, params.sortBy);
         }
-
         currentPage = 1;
         renderMovies();
       } else {
@@ -1342,7 +1286,6 @@
     }
   }
 
-  // 前端排序函数（如果后端不支持排序）
   function sortMoviesFrontend(movies, sortBy) {
     const sorted = [...movies];
     switch(sortBy) {
@@ -1409,47 +1352,27 @@
     const movie = currentMovies.find(m => m.collectionId === collectionId);
     if (!movie) return;
 
-    // 设置模态框标题
     document.getElementById('modalTitle').textContent = '编辑电影记录';
-
-    // 存储当前编辑的收藏ID
     document.getElementById('editCollectionId').value = movie.collectionId;
 
-    // ========== 显示电影基本信息（只读） ==========
-    // 海报
     const displayPoster = document.getElementById('displayPoster');
     displayPoster.src = movie.posterUrl || 'https://via.placeholder.com/80x120?text=No+Poster';
     displayPoster.onerror = function() {
       this.src = 'https://via.placeholder.com/80x120?text=No+Poster';
     };
 
-    // 电影名称
     document.getElementById('displayMovieName').textContent = movie.movieName || '未知';
-
-    // 导演
     document.getElementById('displayDirector').textContent = movie.director || '未知';
-
-    // 年份
     document.getElementById('displayYear').textContent = movie.year || '未知';
-
-    // 地区
     document.getElementById('displayRegion').textContent = movie.region || '未知';
-
-    // 类型
     document.getElementById('displayGenre').textContent = movie.genre || '未知';
 
-    // ========== 设置用户可编辑的个人信息 ==========
-    // 观影状态
     document.getElementById('watchStatus').value = movie.watchStatus || '想看';
-
-    // 私人笔记
     document.getElementById('privateReview').value = movie.privateReview || '';
 
-    // 个人评分（星星组件）
     currentRating = movie.personalRating || 0;
-    updateRatingStarsDisplay();  // 更新星星显示
+    updateRatingStarsDisplay();
 
-    // 显示模态框
     document.getElementById('movieModal').classList.add('show');
   }
 
@@ -1457,20 +1380,18 @@
     document.getElementById('movieModal').classList.remove('show');
   }
 
+  // dashboard.html - saveMovie 函数
   async function saveMovie() {
     const collectionId = document.getElementById('editCollectionId').value;
+    const oldMovie = collectionId ? currentMovies.find(m => m.collectionId == collectionId) : null;
+    const oldRating = oldMovie?.personalRating || 0;
+    const newRating = currentRating;
 
-    // 只提交用户可修改的字段
     const movieData = {
-      personalRating: currentRating,           // 个人评分
-      watchStatus: document.getElementById('watchStatus').value,  // 观影状态
-      privateReview: document.getElementById('privateReview').value  // 私人笔记
+      personalRating: newRating,
+      watchStatus: document.getElementById('watchStatus').value,
+      privateReview: document.getElementById('privateReview').value
     };
-
-    // 验证：如果有评分但未选择状态，可以给个提示
-    if (movieData.personalRating > 0 && !movieData.watchStatus) {
-      movieData.watchStatus = '想看';
-    }
 
     try {
       let result;
@@ -1479,17 +1400,43 @@
       } else {
         result = await movieAPI.addMovie(movieData);
       }
+
       if (result.code === 200) {
         showToast('保存成功', 'success');
         closeMovieModal();
-        await forceRefresh();  // 刷新列表
-        await loadCategories();  // 刷新分类统计
+        await forceRefresh();
+        await loadCategories();
+
+        // ✅ 评分变化时触发全局更新
+        if (oldRating !== newRating) {
+          if (oldMovie && oldMovie.tmdbId) {
+            await refreshMovieRating(oldMovie.tmdbId);
+          }
+          // 重新加载排行榜数据
+          if (typeof refreshRankings === 'function') {
+            refreshRankings();
+          }
+        }
       } else {
         showToast(result.message || '保存失败', 'error');
       }
     } catch (error) {
       console.error('保存失败:', error);
       showToast('保存失败，请重试', 'error');
+    }
+  }
+
+  // ✅ 新增：触发评分更新
+  async function triggerRatingUpdateForMovie(tmdbId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/comment/averageByTmdb/${tmdbId}`);
+      const result = await response.json();
+      if (result.code === 200 && result.data && typeof emitRatingUpdated === 'function') {
+        emitRatingUpdated(tmdbId, result.data.avgRating, result.data.count);
+        console.log(`✅ 已触发评分更新事件: tmdbId=${tmdbId}, 新评分=${result.data.avgRating}`);
+      }
+    } catch (error) {
+      console.error('触发评分更新失败:', error);
     }
   }
 
@@ -1510,30 +1457,13 @@
       if (result.code === 200) {
         showToast('删除成功', 'success');
         closeDeleteModal();
-        await forceRefresh();  // 使用 forceRefresh
+        await forceRefresh();
       } else {
         showToast(result.message, 'error');
       }
     } catch (error) {
       showToast('删除失败', 'error');
     }
-  }
-
-  // TMDB 搜索
-  async function searchTMDB() {
-    const keyword = document.getElementById('apiSearchKeyword').value;
-    if (!keyword) {
-      showToast('请输入电影名称', 'warning');
-      return;
-    }
-    showToast('TMDB功能需要后端实现代理接口', 'info');
-    const container = document.getElementById('tmdbResults');
-    container.innerHTML = `
-      <div style="text-align: center; padding: 20px; color: var(--gray-500);">
-        请在后端实现 TMDB API 代理接口<br>
-        接口地址: /api/tmdb/search?keyword=${encodeURIComponent(keyword)}
-      </div>
-    `;
   }
 
   function switchTab(tab) {
@@ -1577,7 +1507,6 @@
     document.getElementById('closeDeleteModalBtn')?.addEventListener('click', closeDeleteModal);
     document.getElementById('cancelDeleteBtn')?.addEventListener('click', closeDeleteModal);
     document.getElementById('confirmDeleteBtn')?.addEventListener('click', confirmDelete);
-    document.getElementById('searchTMDBBtn')?.addEventListener('click', searchTMDB);
     document.getElementById('createCategoryBtn')?.addEventListener('click', createCategory);
     document.getElementById('closeMoveModalBtn')?.addEventListener('click', closeMoveModal);
     document.getElementById('closeEditCategoryModalBtn')?.addEventListener('click', closeEditCategoryModal);

@@ -12,6 +12,7 @@
         <result column="poster_url" property="posterUrl"/>
         <result column="genre" property="genre"/>
         <result column="region" property="region"/>
+        <result column="actors" property="actors"/>
         <result column="avg_rating" property="avgRating"/>
         <result column="rating_count" property="ratingCount"/>
         <result column="create_time" property="createTime"/>
@@ -33,9 +34,22 @@
         <result column="poster_url" property="posterUrl"/>
         <result column="genre" property="genre"/>
         <result column="region" property="region"/>
+        <result column="actors" property="actors"/>
     </resultMap>
 
     <!-- 基础查询 -->
+    <!-- 查询所有电影 -->
+    <select id="findAllMovies" resultMap="MoviePublicMap">
+        SELECT * FROM movie_public ORDER BY movie_id DESC
+    </select>
+
+    <!-- 更新演员信息 -->
+    <update id="updateMovieActors">
+        UPDATE movie_public
+        SET actors = #{actors}
+        WHERE movie_id = #{movieId}
+    </update>
+
     <select id="findMovieByName" resultMap="MoviePublicMap">
         SELECT * FROM movie_public WHERE movie_name = #{movieName}
     </select>
@@ -45,8 +59,8 @@
     </select>
 
     <insert id="insertMovie" useGeneratedKeys="true" keyProperty="movieId">
-        INSERT INTO movie_public (movie_name, director, year, poster_url, genre, region, tmdb_id)
-        VALUES (#{movieName}, #{director}, #{year}, #{posterUrl}, #{genre}, #{region}, #{tmdbId})
+        INSERT INTO movie_public (movie_name, director, year, poster_url, genre, region, tmdb_id, actors)
+        VALUES (#{movieName}, #{director}, #{year}, #{posterUrl}, #{genre}, #{region}, #{tmdbId}, #{actors})
     </insert>
 
     <update id="updateMovieRating">
@@ -57,7 +71,7 @@
 
     <!-- 收藏查询 -->
     <select id="findCollectionsByUserId" resultMap="MovieCollectionMap">
-        SELECT c.*, m.movie_name, m.director, m.year, m.poster_url, m.genre, m.region
+        SELECT c.*, m.movie_name, m.director, m.year, m.poster_url, m.genre, m.region, m.actors
         FROM movie_collection c
                  JOIN movie_public m ON c.movie_id = m.movie_id
         WHERE c.user_id = #{userId}
@@ -96,7 +110,7 @@
 
     <!-- 搜索筛选 - 修复类型筛选问题 -->
     <select id="searchCollections" resultMap="MovieCollectionMap">
-        SELECT c.*, m.movie_name, m.director, m.year, m.poster_url, m.genre, m.region
+        SELECT c.*, m.movie_name, m.director, m.year, m.poster_url, m.genre, m.region, m.actors
         FROM movie_collection c
         JOIN movie_public m ON c.movie_id = m.movie_id
         WHERE c.user_id = #{userId}
@@ -106,9 +120,10 @@
             AND m.movie_name LIKE CONCAT('%', #{keyword}, '%')
         </if>
 
-        <!-- 导演 -->
+        <!-- 导演/演员 -->
         <if test="director != null and director != ''">
-            AND m.director LIKE CONCAT('%', #{director}, '%')
+            AND (m.director LIKE CONCAT('%', #{director}, '%')
+            OR m.actors LIKE CONCAT('%', #{director}, '%'))
         </if>
 
         <!-- 个人评分 -->

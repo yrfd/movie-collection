@@ -13,6 +13,7 @@
         <result column="is_edited" property="isEdited"/>
         <result column="create_time" property="createTime"/>
         <result column="update_time" property="updateTime"/>
+        <result column="snapshot_rating" property="snapshotRating"/>
         <result column="username" property="username"/>
         <result column="movie_name" property="movieName"/>
         <result column="current_rating" property="currentRating"/>
@@ -59,9 +60,12 @@
         WHERE c.comment_id = #{commentId}
     </select>
 
+    <!-- 插入评论 - 合并方案：同时支持回复和自动获取评分 -->
     <insert id="insertComment" useGeneratedKeys="true" keyProperty="commentId">
-        INSERT INTO movie_comment (movie_id, user_id, content, reply_to)
-        VALUES (#{movieId}, #{userId}, #{content}, #{replyTo})
+        INSERT INTO movie_comment (movie_id, user_id, content, reply_to, snapshot_rating)
+        SELECT #{movieId}, #{userId}, #{content}, #{replyTo}, col.personal_rating
+        FROM movie_collection col
+        WHERE col.user_id = #{userId} AND col.movie_id = #{movieId}
     </insert>
 
     <update id="updateComment">
@@ -85,6 +89,23 @@
         ORDER BY c.create_time DESC
     </select>
 
+    <!-- 评分相关查询 - 使用 snapshot_rating -->
+    <select id="getAverageRating" resultType="java.lang.Double">
+        SELECT AVG(snapshot_rating)
+        FROM movie_comment
+        WHERE movie_id = #{movieId}
+          AND snapshot_rating IS NOT NULL
+          AND snapshot_rating > 0
+    </select>
+
+    <select id="getRatingCount" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM movie_comment
+        WHERE movie_id = #{movieId}
+          AND snapshot_rating IS NOT NULL
+          AND snapshot_rating > 0
+    </select>
+
     <select id="findCommentsByTmdbId" resultMap="CommentMap">
         SELECT c.*, u.username, m.movie_name
         FROM movie_comment c
@@ -92,6 +113,24 @@
                  JOIN movie_public m ON c.movie_id = m.movie_id
         WHERE m.tmdb_id = #{tmdbId}
         ORDER BY c.create_time DESC
+    </select>
+
+    <select id="getAverageRatingByTmdbId" resultType="java.lang.Double">
+        SELECT AVG(c.snapshot_rating)
+        FROM movie_comment c
+                 JOIN movie_public m ON c.movie_id = m.movie_id
+        WHERE m.tmdb_id = #{tmdbId}
+          AND c.snapshot_rating IS NOT NULL
+          AND c.snapshot_rating > 0
+    </select>
+
+    <select id="getRatingCountByTmdbId" resultType="java.lang.Integer">
+        SELECT COUNT(*)
+        FROM movie_comment c
+                 JOIN movie_public m ON c.movie_id = m.movie_id
+        WHERE m.tmdb_id = #{tmdbId}
+          AND c.snapshot_rating IS NOT NULL
+          AND c.snapshot_rating > 0
     </select>
 
     <select id="findCommentByUserAndMovie" resultMap="CommentMap">
@@ -102,5 +141,12 @@
         WHERE c.user_id = #{userId} AND c.movie_id = #{movieId}
             LIMIT 1
     </select>
+
+    <update id="updateCommentRatingByUserAndMovie">
+        UPDATE movie_comment
+        SET snapshot_rating = #{newRating},
+            update_time = NOW()
+        WHERE user_id = #{userId} AND movie_id = #{movieId}
+    </update>
 
 </mapper>

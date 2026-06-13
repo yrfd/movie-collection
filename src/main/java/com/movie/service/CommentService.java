@@ -29,7 +29,6 @@ public class CommentService {
     @Autowired
     private CommentLikeMapper commentLikeMapper;
 
-
     public List<Comment> getCommentsByMovie(Integer movieId) {
         return commentMapper.findCommentsByMovieId(movieId);
     }
@@ -43,44 +42,88 @@ public class CommentService {
     }
 
     /**
-     * 获取电影评分统计 - 从收藏表统计
+     * 获取电影评分统计 - 从 movie_public 表统计（main 分支方式）
      */
     public Map<String, Object> getMovieRating(Integer movieId) {
         Map<String, Object> result = new HashMap<>();
-        Double avgRating = movieMapper.getAveragePersonalRatingByMovie(movieId);
-        Integer count = movieMapper.getRatingCountFromCollections(movieId);
+        
+        try {
+            MoviePublic movie = movieMapper.findMovieById(movieId);
+            if (movie != null && movie.getAvgRating() != null && movie.getAvgRating() > 0) {
+                result.put("avgRating", movie.getAvgRating());
+                result.put("count", movie.getRatingCount() != null ? movie.getRatingCount() : 0);
+                result.put("avgRatingFormatted", String.format("%.1f", movie.getAvgRating()));
+                result.put("hasRating", true);
+            } else {
+                result.put("avgRating", 0.0);
+                result.put("count", 0);
+                result.put("avgRatingFormatted", "0.0");
+                result.put("hasRating", false);
+            }
+        } catch (Exception e) {
+            result.put("avgRating", 0.0);
+            result.put("count", 0);
+            result.put("avgRatingFormatted", "0.0");
+            result.put("hasRating", false);
+        }
+        
+        return result;
+    }
 
-        result.put("avgRating", avgRating != null ? avgRating : 0.0);
-        result.put("count", count != null ? count : 0);
-        result.put("avgRatingFormatted", String.format("%.1f", avgRating != null ? avgRating : 0.0));
-        result.put("hasRating", count != null && count > 0);
+    /**
+     * 获取电影评分统计（根据TMDB ID）- 从 movie_public 表读取
+     */
+    public Map<String, Object> getMovieRatingByTmdbId(Integer tmdbId) {
+        Map<String, Object> result = new HashMap<>();
+
+        if (tmdbId == null) {
+            result.put("avgRating", 0.0);
+            result.put("count", 0);
+            result.put("avgRatingFormatted", "0.0");
+            result.put("hasRating", false);
+            return result;
+        }
+
+        try {
+            MoviePublic movie = movieMapper.findMovieByTmdbId(tmdbId);
+
+            if (movie != null && movie.getAvgRating() != null && movie.getAvgRating() > 0) {
+                result.put("avgRating", movie.getAvgRating());
+                result.put("count", movie.getRatingCount() != null ? movie.getRatingCount() : 0);
+                result.put("avgRatingFormatted", String.format("%.1f", movie.getAvgRating()));
+                result.put("hasRating", true);
+            } else {
+                result.put("avgRating", 0.0);
+                result.put("count", 0);
+                result.put("avgRatingFormatted", "0.0");
+                result.put("hasRating", false);
+            }
+        } catch (Exception e) {
+            System.err.println("获取电影评分失败, tmdbId: " + tmdbId);
+            e.printStackTrace();
+            result.put("avgRating", 0.0);
+            result.put("count", 0);
+            result.put("avgRatingFormatted", "0.0");
+            result.put("hasRating", false);
+        }
 
         return result;
     }
 
     /**
-     * 获取电影评分统计（根据TMDB ID）
-     */
-    public Map<String, Object> getMovieRatingByTmdbId(Integer tmdbId) {
-        MoviePublic movie = movieMapper.findMovieByTmdbId(tmdbId);
-        if (movie == null) {
-            Map<String, Object> result = new HashMap<>();
-            result.put("avgRating", 0.0);
-            result.put("count", 0);
-            result.put("hasRating", false);
-            return result;
-        }
-        return getMovieRating(movie.getMovieId());
-    }
-
-    /**
-     * 发布评论 - 未收藏也能评论，评分为0
+     * 发布评论 - 采用 main 分支的强制评分逻辑
      */
     @Transactional
     public Map<String, Object> addComment(Integer userId, CommentRequest request) {
         Map<String, Object> result = new HashMap<>();
 
         MovieCollection collection = movieMapper.findCollectionByUserAndMovie(userId, request.getMovieId());
+        
+        if (collection == null) {
+            result.put("success", false);
+            result.put("message", "请先收藏该电影");
+            return result;
+        }
 
         Comment existingComment = commentMapper.findCommentByUserAndMovie(userId, request.getMovieId());
         if (existingComment != null) {
@@ -89,11 +132,10 @@ public class CommentService {
             return result;
         }
 
-        Double rating = 0.0;
-        boolean isRated = false;
-        if (collection != null && collection.getPersonalRating() != null && collection.getPersonalRating() > 0) {
-            rating = collection.getPersonalRating();
-            isRated = true;
+        if (collection.getPersonalRating() == null || collection.getPersonalRating() == 0) {
+            result.put("success", false);
+            result.put("message", "请先在收藏中给电影评分（点击星星）再进行评价");
+            return result;
         }
 
         Comment comment = new Comment();
@@ -103,20 +145,19 @@ public class CommentService {
         comment.setReplyTo(0);
 
         commentMapper.insertComment(comment);
+        
+        updateMovieRating(request.getMovieId());
 
         result.put("success", true);
         result.put("message", "发布成功");
         result.put("commentId", comment.getCommentId());
-        result.put("rating", rating);
-        result.put("isRated", isRated);
-        if (!isRated) {
-            result.put("warning", "您尚未收藏该电影或未评分");
-        }
+        result.put("rating", collection.getPersonalRating());
+        result.put("isRated", true);
         return result;
     }
 
     /**
-     * 回复他人评论
+     * 回复他人评论 - 保留 feature/mmc 分支功能
      */
     @Transactional
     public Map<String, Object> replyComment(Integer userId, ReplyRequest request) {
@@ -179,11 +220,10 @@ public class CommentService {
             return result;
         }
 
-        Double rating = 0.0;
-        boolean isRated = false;
-        if (collection != null && collection.getPersonalRating() != null && collection.getPersonalRating() > 0) {
-            rating = collection.getPersonalRating();
-            isRated = true;
+        if (collection == null || collection.getPersonalRating() == null || collection.getPersonalRating() == 0) {
+            result.put("success", false);
+            result.put("message", "请先在收藏中给电影评分（点击星星）再进行评价");
+            return result;
         }
 
         Comment comment = new Comment();
@@ -193,14 +233,14 @@ public class CommentService {
         comment.setReplyTo(0);
 
         commentMapper.insertComment(comment);
+        
+        updateMovieRating(movie.getMovieId());
 
         result.put("success", true);
         result.put("message", "评价发布成功");
-        result.put("rating", rating);
-        result.put("isRated", isRated);
-        if (!isRated) {
-            result.put("warning", "您尚未收藏该电影或未评分");
-        }
+        result.put("commentId", comment.getCommentId());
+        result.put("rating", collection.getPersonalRating());
+        result.put("isRated", true);
         return result;
     }
 
@@ -231,6 +271,7 @@ public class CommentService {
         Comment comment = commentMapper.findCommentById(commentId);
         if (comment != null) {
             commentMapper.deleteComment(commentId);
+            updateMovieRating(comment.getMovieId());
         }
 
         result.put("success", true);
@@ -239,30 +280,32 @@ public class CommentService {
     }
 
     /**
-     * 更新电影综合评分（从收藏表统计）
-     * 供 MovieService 调用
+     * 更新电影综合评分（从 movie_collection 表统计）
      */
-    public void updateMovieRatingFromCollections(Integer movieId) {
+    public void updateMovieRating(Integer movieId) {
         Double avgRating = movieMapper.getAveragePersonalRatingByMovie(movieId);
         Integer count = movieMapper.getRatingCountFromCollections(movieId);
 
-        if (count == null || count == 0) {
+        if (avgRating == null || count == null || count == 0) {
             avgRating = 0.0;
             count = 0;
         }
 
-        movieMapper.updateMovieRating(movieId, avgRating, count);
+        int updated = movieMapper.updateMovieRating(movieId, avgRating, count);
 
         System.out.println("📊 更新电影评分: movieId=" + movieId +
-                ", avgRating=" + avgRating +
-                ", 评分人数=" + count);
+                ", avgRating=" + String.format("%.1f", avgRating) +
+                ", 评分人数=" + count +
+                ", 结果=" + (updated > 0 ? "成功" : "失败"));
     }
 
+    /**
+     * 点赞/取消点赞 - 保留 feature/mmc 分支功能
+     */
     @Transactional
     public Map<String, Object> toggleLike(Integer userId, Integer commentId) {
         Map<String, Object> result = new HashMap<>();
 
-        // 检查评论是否存在
         Comment comment = commentMapper.findCommentById(commentId);
         if (comment == null) {
             result.put("success", false);
@@ -270,28 +313,22 @@ public class CommentService {
             return result;
         }
 
-        // 检查是否已点赞
         boolean liked = commentLikeMapper.isLiked(userId, commentId);
 
         if (liked) {
-            // 取消点赞
             commentLikeMapper.deleteLike(userId, commentId);
-            // 减少点赞数
             commentMapper.decrementLikeCount(commentId);
             result.put("success", true);
             result.put("message", "取消点赞");
             result.put("liked", false);
         } else {
-            // 添加点赞
             commentLikeMapper.insertLike(userId, commentId);
-            // 增加点赞数
             commentMapper.incrementLikeCount(commentId);
             result.put("success", true);
             result.put("message", "点赞成功");
             result.put("liked", true);
         }
 
-        // 获取最新点赞数
         int newLikeCount = commentMapper.getLikeCount(commentId);
         result.put("likeCount", newLikeCount);
 

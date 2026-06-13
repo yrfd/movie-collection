@@ -15,4 +15,5 @@ public class MovieRequest {
     private String privateReview;
     private Integer tmdbId;
     private Integer categoryId;  // 新增：分类ID
+    private String actors;
 }

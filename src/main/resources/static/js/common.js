@@ -106,4 +106,28 @@ function logout() {
   setTimeout(() => {
     window.location.href = 'index.html';
   }, 500);
+
+  // 触发评分更新事件
+  function emitRatingUpdated(tmdbId, newRating, ratingCount) {
+    const event = new CustomEvent('rating-updated', {
+      detail: { tmdbId, newRating, ratingCount }
+    });
+    window.dispatchEvent(event);
+    console.log(`📢 触发评分更新: tmdbId=${tmdbId}, 新评分=${newRating}, 评价人数=${ratingCount}`);
+  }
+
+// 刷新指定电影的所有评分显示
+  async function refreshMovieRating(tmdbId) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/comment/averageByTmdb/${tmdbId}`);
+      const result = await response.json();
+      if (result.code === 200 && result.data) {
+        emitRatingUpdated(tmdbId, result.data.avgRating, result.data.count);
+        return result.data;
+      }
+    } catch (error) {
+      console.error('刷新评分失败:', error);
+    }
+    return null;
+  }
 }

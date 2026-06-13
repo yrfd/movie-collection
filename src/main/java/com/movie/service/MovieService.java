@@ -2,29 +2,37 @@ package com.movie.service;
 
 import com.movie.dto.CategoryRequest;
 import com.movie.dto.MovieRequest;
-import com.movie.entity.MovieCategory;
 import com.movie.dto.PrivateReviewRequest;
+import com.movie.entity.MovieCategory;
 import com.movie.entity.MovieCollection;
 import com.movie.entity.MoviePublic;
 import com.movie.mapper.CommentMapper;
 import com.movie.mapper.MovieMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import java.util.stream.Collectors;
 
 @Service
 public class MovieService {
 
     @Autowired
     private MovieMapper movieMapper;
+
     @Autowired
     private CommentMapper commentMapper;
+
     @Autowired
     private CommentService commentService;
+
+    @Autowired
+    private RestTemplate restTemplate;
 
     // 地区映射（解决中英文匹配问题）
     private static final Map<String, String> REGION_MAP = new HashMap<>();
@@ -64,7 +72,9 @@ public class MovieService {
         return movieMapper.findCollectionsByUserId(userId);
     }
 
-    // 添加电影收藏
+    /**
+     * 添加电影收藏
+     */
     @Transactional
     public Map<String, Object> addCollection(Integer userId, MovieRequest request) {
         Map<String, Object> result = new HashMap<>();
@@ -80,7 +90,16 @@ public class MovieService {
             movie.setRegion(request.getRegion());
             movie.setGenre(request.getGenre());
             movie.setPosterUrl(request.getPosterUrl());
+            movie.setActors(request.getActors());
+
             movieMapper.insertMovie(movie);
+        } else {
+            // 如果电影已存在但演员信息为空，且请求中有演员信息，则更新演员信息
+            if ((movie.getActors() == null || movie.getActors().isEmpty())
+                    && request.getActors() != null && !request.getActors().isEmpty()) {
+                movie.setActors(request.getActors());
+                movieMapper.updateMovieActors(movie.getMovieId(), request.getActors());
+            }
         }
 
         // 检查是否已收藏
@@ -98,9 +117,14 @@ public class MovieService {
         collection.setPersonalRating(request.getPersonalRating());
         collection.setWatchStatus(request.getWatchStatus());
         collection.setPrivateReview(request.getPrivateReview());
-        collection.setCategoryId(request.getCategoryId()); // 设置分类
+        collection.setCategoryId(request.getCategoryId());
 
         movieMapper.insertCollection(collection);
+
+        // 如果有评分，立即更新综合评分
+        if (request.getPersonalRating() != null && request.getPersonalRating() > 0) {
+            commentService.updateMovieRating(movie.getMovieId());
+        }
 
         result.put("success", true);
         result.put("message", "添加成功");
@@ -108,7 +132,10 @@ public class MovieService {
         return result;
     }
 
-    // 更新电影收藏
+    /**
+     * 更新电影收藏（个人评分、观影状态、私人笔记）
+     * 采用 main 分支的完善逻辑
+     */
     @Transactional
     public Map<String, Object> updateCollection(Integer collectionId, MovieRequest request) {
         Map<String, Object> result = new HashMap<>();
@@ -120,6 +147,9 @@ public class MovieService {
             return result;
         }
 
+        Double oldRating = collection.getPersonalRating();
+        Double newRating = request.getPersonalRating();
+
         // 更新收藏信息
         collection.setPersonalRating(request.getPersonalRating());
         collection.setWatchStatus(request.getWatchStatus());
@@ -127,24 +157,56 @@ public class MovieService {
 
         movieMapper.updateCollection(collection);
 
-        // ✅ 修正：评分变化时，重新计算电影综合评分（从收藏表统计）
-        // 注意：不需要同步到评论表，评论表不存储评分
-        commentService.updateMovieRatingFromCollections(collection.getMovieId());
+        // 如果用户有公开评价，同步更新公开评价中的评分快照
+        if (newRating != null && newRating > 0) {
+            int updated = commentMapper.updateCommentRatingByUserAndMovie(
+                    collection.getUserId(),
+                    collection.getMovieId(),
+                    newRating
+            );
+            if (updated > 0) {
+                System.out.println("✅ 已同步更新公开评价评分: userId=" + collection.getUserId() +
+                        ", movieId=" + collection.getMovieId() + ", rating=" + newRating);
+            }
+        }
+
+        // 评分发生变化时，更新综合评分
+        boolean hasOldRating = oldRating != null && oldRating > 0;
+        boolean hasNewRating = newRating != null && newRating > 0;
+
+        if (hasOldRating != hasNewRating || (hasOldRating && hasNewRating && !oldRating.equals(newRating))) {
+            commentService.updateMovieRating(collection.getMovieId());
+            System.out.println("✅ 评分变化，已更新综合评分: movieId=" + collection.getMovieId() +
+                    ", 旧评分=" + oldRating + ", 新评分=" + newRating);
+        }
 
         result.put("success", true);
         result.put("message", "更新成功");
         return result;
     }
 
-    // 删除电影收藏
+    /**
+     * 删除电影收藏
+     */
+    @Transactional
     public Map<String, Object> deleteCollection(Integer collectionId) {
         Map<String, Object> result = new HashMap<>();
-        movieMapper.deleteCollection(collectionId);
+
+        MovieCollection collection = movieMapper.findCollectionById(collectionId);
+        if (collection != null) {
+            movieMapper.deleteCollection(collectionId);
+            // 删除后重新计算该电影的综合评分
+            commentService.updateMovieRating(collection.getMovieId());
+        }
+
         result.put("success", true);
         result.put("message", "删除成功");
         return result;
     }
 
+    /**
+     * 搜索筛选电影收藏
+     */
     public List<MovieCollection> searchMovies(Integer userId, String keyword, String director,
                                               Double minRating, String region, String genre,
                                               Integer categoryId, String watchStatus,
@@ -154,6 +216,8 @@ public class MovieService {
         return movieMapper.searchCollections(userId, keyword, director, minRating, englishRegion,
                 genre, categoryId, watchStatus, minYear, maxYear, sortBy);
     }
+
+    // ========== 排行榜 ==========
 
     /**
      * 获取按评分排序的电影排行榜
@@ -175,6 +239,9 @@ public class MovieService {
         return movieMapper.findCategoriesByUserId(userId);
     }
 
+    /**
+     * 创建分类
+     */
     @Transactional
     public Map<String, Object> createCategory(Integer userId, CategoryRequest request) {
         Map<String, Object> result = new HashMap<>();
@@ -198,6 +265,9 @@ public class MovieService {
         return result;
     }
 
+    /**
+     * 删除分类
+     */
     @Transactional
     public Map<String, Object> deleteCategory(Integer userId, Integer categoryId) {
         Map<String, Object> result = new HashMap<>();
@@ -221,6 +291,9 @@ public class MovieService {
         return result;
     }
 
+    /**
+     * 移动单个收藏到指定分类
+     */
     @Transactional
     public Map<String, Object> moveToCategory(Integer collectionId, Integer categoryId) {
         Map<String, Object> result = new HashMap<>();
@@ -239,6 +312,9 @@ public class MovieService {
         return result;
     }
 
+    /**
+     * 批量移动收藏到指定分类
+     */
     @Transactional
     public Map<String, Object> batchMoveToCategory(Integer userId, List<Integer> collectionIds, Integer categoryId) {
         Map<String, Object> result = new HashMap<>();
@@ -249,53 +325,23 @@ public class MovieService {
             return result;
         }
 
-        movieMapper.batchMoveToCategory(categoryId, collectionIds, userId);
+        int updated = movieMapper.batchMoveToCategory(categoryId, collectionIds, userId);
         result.put("success", true);
-        result.put("message", "批量移动成功");
+        result.put("message", "成功移动 " + updated + " 部电影");
         return result;
     }
 
+    /**
+     * 获取指定分类下的收藏列表
+     */
     public List<MovieCollection> getCollectionsByCategory(Integer userId, Integer categoryId) {
         return movieMapper.searchCollections(userId, null, null, null, null, null,
                 categoryId, null, null, null, null);
     }
 
-    // ========== 私人评价管理 ==========
     /**
-     * 更新私人评价
-     * @param userId 用户ID
-     * @param request 私人评价请求（包含tmdbId和私人评价内容）
-     * @return 操作结果
+     * 更新分类名称 - 保留 feature/mmc 分支功能
      */
-    @Transactional
-    public Map<String, Object> updatePrivateReview(Integer userId, PrivateReviewRequest request) {
-        Map<String, Object> result = new HashMap<>();
-
-        // 1. 根据TMDB ID查找电影
-        MoviePublic movie = movieMapper.findMovieByTmdbId(request.getTmdbId());
-        if (movie == null) {
-            result.put("success", false);
-            result.put("message", "电影不存在");
-            return result;
-        }
-
-        // 2. 查找用户的收藏记录
-        MovieCollection collection = movieMapper.findCollectionByUserAndMovie(userId, movie.getMovieId());
-        if (collection == null) {
-            result.put("success", false);
-            result.put("message", "请先收藏该电影");
-            return result;
-        }
-
-        // 3. 更新私人评价
-        collection.setPrivateReview(request.getPrivateReview());
-        movieMapper.updateCollection(collection);
-
-        result.put("success", true);
-        result.put("message", "私人评价更新成功");
-        return result;
-    }
-
     @Transactional
     public Map<String, Object> updateCategory(Integer userId, Integer categoryId, CategoryRequest request) {
         Map<String, Object> result = new HashMap<>();
@@ -332,5 +378,87 @@ public class MovieService {
             result.put("message", "修改失败");
         }
         return result;
+    }
+
+    // ========== 私人评价管理 ==========
+
+    /**
+     * 更新私人评价
+     */
+    @Transactional
+    public Map<String, Object> updatePrivateReview(Integer userId, PrivateReviewRequest request) {
+        Map<String, Object> result = new HashMap<>();
+
+        // 1. 根据TMDB ID查找电影
+        MoviePublic movie = movieMapper.findMovieByTmdbId(request.getTmdbId());
+        if (movie == null) {
+            result.put("success", false);
+            result.put("message", "电影不存在");
+            return result;
+        }
+
+        // 2. 查找用户的收藏记录
+        MovieCollection collection = movieMapper.findCollectionByUserAndMovie(userId, movie.getMovieId());
+        if (collection == null) {
+            result.put("success", false);
+            result.put("message", "请先收藏该电影");
+            return result;
+        }
+
+        // 3. 更新私人评价
+        collection.setPrivateReview(request.getPrivateReview());
+        movieMapper.updateCollection(collection);
+
+        result.put("success", true);
+        result.put("message", "私人评价更新成功");
+        return result;
+    }
+
+    // ========== 批量更新演员信息 ==========
+
+    /**
+     * 批量更新所有电影的演员信息（从TMDB获取）- 保留 main 分支功能
+     */
+    @Transactional
+    public int updateAllMoviesActors() {
+        List<MoviePublic> allMovies = movieMapper.findAllMovies();
+        int updatedCount = 0;
+
+        for (MoviePublic movie : allMovies) {
+            if (movie.getTmdbId() != null && (movie.getActors() == null || movie.getActors().isEmpty())) {
+                try {
+                    // 从 TMDB 获取演员信息
+                    String url = "https://api.themoviedb.org/3/movie/" + movie.getTmdbId() +
+                            "?api_key=b8bd41516966d743a7cbcb3d81dc02c2&language=zh-CN&append_to_response=credits";
+                    ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+                    Map<String, Object> data = response.getBody();
+
+                    if (data != null && data.containsKey("credits")) {
+                        Map<String, Object> credits = (Map<String, Object>) data.get("credits");
+                        List<Map<String, Object>> cast = (List<Map<String, Object>>) credits.get("cast");
+
+                        if (cast != null && !cast.isEmpty()) {
+                            List<String> actorNames = cast.stream()
+                                    .limit(5)
+                                    .map(actor -> (String) actor.get("name"))
+                                    .collect(Collectors.toList());
+                            String actors = String.join("、", actorNames);
+
+                            // 更新数据库
+                            movieMapper.updateMovieActors(movie.getMovieId(), actors);
+                            updatedCount++;
+                            System.out.println("✅ 更新演员信息: " + movie.getMovieName() + " -> " + actors);
+
+                            // 避免请求过快
+                            Thread.sleep(100);
+                        }
+                    }
+                } catch (Exception e) {
+                    System.err.println("获取演员信息失败: " + movie.getMovieName() + ", " + e.getMessage());
+                }
+            }
+        }
+
+        return updatedCount;
     }
 }
