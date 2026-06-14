@@ -35,6 +35,9 @@ public class MovieService {
     @Autowired
     private RestTemplate restTemplate;
 
+
+    private static final String TMDB_API_KEY = "b8bd41516966d743a7cbcb3d81dc02c2";
+
     // 地区映射（解决中英文匹配问题）
     private static final Map<String, String> REGION_MAP = new HashMap<>();
 
@@ -387,4 +390,59 @@ public class MovieService {
         }
         return result;
     }
+
+    // 在 MovieService.java 中添加以下方法
+
+    /**
+     * 更新所有电影的演员信息（从TMDB同步）
+     * @return 更新的电影数量
+     */
+    @Transactional
+    public int updateAllMoviesActors() {
+        // 获取所有电影
+        List<MoviePublic> allMovies = movieMapper.findAllMovies();
+        int updatedCount = 0;
+
+        for (MoviePublic movie : allMovies) {
+            // 只更新有 tmdbId 的电影
+            if (movie.getTmdbId() != null && movie.getTmdbId() > 0) {
+                try {
+                    // 从 TMDB 获取电影详情
+                    String url = "https://api.themoviedb.org/3/movie/" + movie.getTmdbId()
+                            + "?api_key=" + TMDB_API_KEY + "&language=zh-CN&append_to_response=credits";
+
+                    ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+                    Map<String, Object> movieData = response.getBody();
+
+                    if (movieData != null && movieData.containsKey("credits")) {
+                        Map<String, Object> credits = (Map<String, Object>) movieData.get("credits");
+                        List<Map<String, Object>> cast = (List<Map<String, Object>>) credits.get("cast");
+
+                        if (cast != null && !cast.isEmpty()) {
+                            // 取前5位演员
+                            List<String> actorNames = cast.stream()
+                                    .limit(5)
+                                    .map(actor -> (String) actor.get("name"))
+                                    .collect(Collectors.toList());
+                            String actors = String.join("、", actorNames);
+
+                            // 更新数据库
+                            movieMapper.updateMovieActors(movie.getMovieId(), actors);
+                            updatedCount++;
+                            System.out.println("✅ 更新演员信息: " + movie.getMovieName() + " -> " + actors);
+                        }
+                    }
+
+                    // 添加延迟避免请求过快
+                    Thread.sleep(100);
+                } catch (Exception e) {
+                    System.err.println("❌ 更新失败: " + movie.getMovieName() + ", 错误: " + e.getMessage());
+                }
+            }
+        }
+
+        return updatedCount;
+    }
+
+
 }

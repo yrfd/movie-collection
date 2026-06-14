@@ -20,7 +20,6 @@ public class TmdbController {
     @GetMapping(value = "/movie/popular", produces = "application/json;charset=UTF-8")
     public ResponseEntity<String> getPopularMovies(@RequestParam(defaultValue = "1") int page) {
         String url = TMDB_BASE_URL + "/movie/popular?api_key=" + TMDB_API_KEY + "&language=zh-CN&page=" + page;
-        System.out.println("热门电影URL: " + url);
 
         try {
             HttpHeaders headers = new HttpHeaders();
@@ -34,7 +33,7 @@ public class TmdbController {
             Map<String, Object> originalData = objectMapper.readValue(fullJson, Map.class);
             List<Map<String, Object>> results = (List<Map<String, Object>>) originalData.get("results");
 
-            // 精简每部电影的数据，只保留必要字段
+            // 精简每部电影的数据，只保留必要字段，不包含评分
             List<Map<String, Object>> simplifiedResults = new ArrayList<>();
             for (Map<String, Object> movie : results) {
                 Map<String, Object> simplified = new HashMap<>();
@@ -42,11 +41,8 @@ public class TmdbController {
                 simplified.put("title", movie.get("title"));
                 simplified.put("poster_path", movie.get("poster_path"));
                 simplified.put("release_date", movie.get("release_date"));
-                simplified.put("vote_average", movie.get("vote_average"));
-                simplified.put("vote_count", movie.get("vote_count"));
-                // original_title 和 overview 不返回，减少数据量
-                simplified.put("original_title", movie.get("title"));
-                simplified.put("overview", movie.get("overview"));  // 简介先留空，需要时再单独请求
+                // ✅ 修复注释：不返回 overview，减少数据量
+                // simplified.put("overview", "");  // 不返回简介，需要时单独请求
                 simplifiedResults.add(simplified);
             }
 
@@ -57,8 +53,6 @@ public class TmdbController {
             simplifiedData.put("results", simplifiedResults);
 
             String simplifiedJson = objectMapper.writeValueAsString(simplifiedData);
-            System.out.println("精简后JSON长度: " + simplifiedJson.length());
-
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(simplifiedJson);
@@ -87,20 +81,42 @@ public class TmdbController {
             url.append("&with_genres=").append(withGenres);
         }
 
-        System.out.println("搜索URL: " + url.toString());
-
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Accept", "application/json;charset=UTF-8");
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
             ResponseEntity<byte[]> response = restTemplate.exchange(url.toString(), HttpMethod.GET, entity, byte[].class);
-            String json = new String(response.getBody(), StandardCharsets.UTF_8);
-            System.out.println("搜索返回JSON长度: " + json.length());
+            String fullJson = new String(response.getBody(), StandardCharsets.UTF_8);
 
+            // ✅ 新增：解析并精简搜索结果，去除评分字段
+            Map<String, Object> originalData = objectMapper.readValue(fullJson, Map.class);
+            List<Map<String, Object>> results = (List<Map<String, Object>>) originalData.get("results");
+
+            // 精简每部电影的数据，只保留必要字段
+            List<Map<String, Object>> simplifiedResults = new ArrayList<>();
+            if (results != null) {
+                for (Map<String, Object> movie : results) {
+                    Map<String, Object> simplified = new HashMap<>();
+                    simplified.put("id", movie.get("id"));
+                    simplified.put("title", movie.get("title"));
+                    simplified.put("poster_path", movie.get("poster_path"));
+                    simplified.put("release_date", movie.get("release_date"));
+                    // 不包含 vote_average 和 vote_count
+                    simplifiedResults.add(simplified);
+                }
+            }
+
+            Map<String, Object> simplifiedData = new HashMap<>();
+            simplifiedData.put("page", originalData.get("page"));
+            simplifiedData.put("total_pages", originalData.get("total_pages"));
+            simplifiedData.put("total_results", originalData.get("total_results"));
+            simplifiedData.put("results", simplifiedResults);
+
+            String simplifiedJson = objectMapper.writeValueAsString(simplifiedData);
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(json);
+                    .body(simplifiedJson);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("{\"error\":\"" + e.getMessage() + "\"}");
@@ -121,21 +137,48 @@ public class TmdbController {
             url.append("&with_genres=").append(withGenres);
         }
 
-        System.out.println("发现电影URL: " + url.toString());
-
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.set("Accept", "application/json;charset=UTF-8");
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
             ResponseEntity<byte[]> response = restTemplate.exchange(url.toString(), HttpMethod.GET, entity, byte[].class);
-            String json = new String(response.getBody(), StandardCharsets.UTF_8);
-            return ResponseEntity.ok().contentType(MediaType.APPLICATION_JSON).body(json);
+            String fullJson = new String(response.getBody(), StandardCharsets.UTF_8);
+
+            // ✅ 新增：解析并精简发现电影数据，去除评分字段
+            Map<String, Object> originalData = objectMapper.readValue(fullJson, Map.class);
+            List<Map<String, Object>> results = (List<Map<String, Object>>) originalData.get("results");
+
+            // 精简每部电影的数据，只保留必要字段
+            List<Map<String, Object>> simplifiedResults = new ArrayList<>();
+            if (results != null) {
+                for (Map<String, Object> movie : results) {
+                    Map<String, Object> simplified = new HashMap<>();
+                    simplified.put("id", movie.get("id"));
+                    simplified.put("title", movie.get("title"));
+                    simplified.put("poster_path", movie.get("poster_path"));
+                    simplified.put("release_date", movie.get("release_date"));
+                    // 不包含 vote_average 和 vote_count
+                    simplifiedResults.add(simplified);
+                }
+            }
+
+            Map<String, Object> simplifiedData = new HashMap<>();
+            simplifiedData.put("page", originalData.get("page"));
+            simplifiedData.put("total_pages", originalData.get("total_pages"));
+            simplifiedData.put("total_results", originalData.get("total_results"));
+            simplifiedData.put("results", simplifiedResults);
+
+            String simplifiedJson = objectMapper.writeValueAsString(simplifiedData);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(simplifiedJson);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("{\"error\":\"" + e.getMessage() + "\"}");
         }
     }
+
     @GetMapping(value = "/movie/{movieId}", produces = "application/json;charset=UTF-8")
     public ResponseEntity<String> getMovieDetails(@PathVariable int movieId) {
         // 构建获取详情的URL，使用 /movie/{movie_id} 端点 [citation:6]
