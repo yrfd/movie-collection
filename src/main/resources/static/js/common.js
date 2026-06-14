@@ -107,3 +107,32 @@ function logout() {
     window.location.href = 'index.html';
   }, 500);
 }
+
+function updateGlobalAvatar() {
+  const user = getCurrentUser();
+  const usernameSpan = document.getElementById('username');
+  if (!usernameSpan || !usernameSpan.parentElement) return;
+
+  // 移除旧的头像
+  const existingAvatar = usernameSpan.parentElement.querySelector('.global-avatar');
+  if (existingAvatar) existingAvatar.remove();
+
+  // 获取头像URL，如果没有则使用默认头像
+  const avatarUrl = user?.avatar || '/images/default-avatar.png';
+
+  const avatarImg = document.createElement('img');
+  avatarImg.src = avatarUrl;
+  avatarImg.className = 'global-avatar';
+  avatarImg.style.width = '28px';
+  avatarImg.style.height = '28px';
+  avatarImg.style.borderRadius = '50%';
+  avatarImg.style.objectFit = 'cover';
+  avatarImg.style.marginRight = '8px';
+
+  // 图片加载失败时使用默认头像
+  avatarImg.onerror = function() {
+    this.src = '/images/default-avatar.png';
+  };
+
+  usernameSpan.parentElement.insertBefore(avatarImg, usernameSpan);
+}

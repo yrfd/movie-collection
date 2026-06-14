@@ -80,14 +80,8 @@ public class CommentService {
     public Map<String, Object> addComment(Integer userId, CommentRequest request) {
         Map<String, Object> result = new HashMap<>();
 
+        // ✅ 修改：不阻止未收藏用户，只是获取评分（可能为null）
         MovieCollection collection = movieMapper.findCollectionByUserAndMovie(userId, request.getMovieId());
-
-        Comment existingComment = commentMapper.findCommentByUserAndMovie(userId, request.getMovieId());
-        if (existingComment != null) {
-            result.put("success", false);
-            result.put("message", "你已经评价过这部电影了");
-            return result;
-        }
 
         Double rating = 0.0;
         boolean isRated = false;
@@ -96,11 +90,22 @@ public class CommentService {
             isRated = true;
         }
 
+        // ✅ 删除原有的重复评价检查（如果允许同一电影多条评价）
+        // 如果只允许一条评价，保留此检查但移除收藏限制
+        Comment existingComment = commentMapper.findCommentByUserAndMovie(userId, request.getMovieId());
+        if (existingComment != null) {
+            // 如果允许重复评价，删除这段代码；如果只允许一条，保留但修改提示
+            result.put("success", false);
+            result.put("message", "你已经评价过这部电影了");
+            return result;
+        }
+
         Comment comment = new Comment();
         comment.setMovieId(request.getMovieId());
         comment.setUserId(userId);
         comment.setContent(request.getContent());
         comment.setReplyTo(0);
+        // ✅ 注意：评论表不存储评分，评分始终从收藏表读取
 
         commentMapper.insertComment(comment);
 

@@ -113,6 +113,10 @@ const userAPI = {
             method: 'PUT',
             body: JSON.stringify({ oldPassword, newPassword })
         });
+    },
+
+    getProfile: () => {
+        return request('/user/profile');
     }
 };
 

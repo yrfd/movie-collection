@@ -142,6 +142,7 @@
     </div>
     <div class="nav-links">
       <div class="user-info">
+        <img id="navAvatar" src="/images/default-avatar.png" class="nav-avatar" style="display: none;">
         <span class="username" id="username"></span>
         <button class="logout-btn" onclick="logout()">退出</button>
       </div>
@@ -152,7 +153,11 @@
 <div class="container">
   <div class="profile-card">
     <div class="profile-header">
-      <div class="profile-avatar">👤</div>
+      <div class="profile-avatar" id="avatarContainer" style="cursor: pointer; position: relative;">
+        <img id="avatarImg" src="" alt="👤" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+        <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif" style="display: none;">
+        <div class="avatar-upload-hint" style="position: absolute; bottom: 0; right: 0; background: var(--primary); border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;">📷</div>
+      </div>
       <div class="profile-username" id="profileUsername"></div>
     </div>
     <div class="profile-body">
@@ -270,8 +275,18 @@
     document.getElementById('profileUsername').textContent = user.username;
     document.getElementById('displayUsername').textContent = user.username;
     document.getElementById('displayEmail').textContent = user.email || '未设置';
+
+    // ✅ 添加：更新导航栏头像
+    updateGlobalAvatar();
+
+    // ✅ 添加：加载用户头像到个人资料页
+    if (user.avatar) {
+      document.getElementById('avatarImg').src = user.avatar;
+    } else {
+      document.getElementById('avatarImg').src = '/images/default-avatar.png';
+    }
+
     if (user.createTime) {
-      // 尝试多种方式格式化
       let formattedTime = '';
       formattedTime = formatDate(user.createTime);
       document.getElementById('displayCreateTime').textContent = formattedTime;
@@ -563,6 +578,109 @@
   // 绑定关闭事件
   document.getElementById('closePasswordModalBtn').addEventListener('click', closePasswordModal);
   document.getElementById('cancelPasswordBtn').addEventListener('click', closePasswordModal);
+
+  async function loadUserProfile() {
+    const result = await userAPI.getProfile();
+    if (result.code === 200 && result.data) {
+      const avatarUrl = result.data.avatar || '/images/default-avatar.png';
+      document.getElementById('avatarImg').src = avatarUrl;
+      document.getElementById('profileUsername').textContent = result.data.username;
+      // 更新导航栏头像
+      updateNavbarAvatar(avatarUrl);
+    }
+  }
+
+  // 头像上传
+  document.getElementById('avatarContainer').addEventListener('click', () => {
+    document.getElementById('avatarInput').click();
+  });
+
+  document.getElementById('avatarInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      showToast('请选择图片文件', 'error');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('图片大小不能超过5MB', 'error');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = localStorage.getItem('token');
+
+    try {
+      // ✅ 使用与轮播图相同的上传接口
+      const response = await fetch(`${API_BASE_URL}/upload/image`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      const result = await response.json();
+
+      if (result.code === 200 && result.data && result.data.url) {
+        const avatarUrl = result.data.url;
+
+        // 调用后端保存头像URL到用户表
+        const saveResponse = await fetch(`${API_BASE_URL}/user/avatar/save`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ avatarUrl: avatarUrl })
+        });
+        const saveResult = await saveResponse.json();
+
+        if (saveResult.code === 200) {
+          // 更新页面显示
+          document.getElementById('avatarImg').src = avatarUrl;
+
+          // 更新 localStorage 中的用户信息
+          const currentUser = getCurrentUser();
+          if (currentUser) {
+            currentUser.avatar = avatarUrl;
+            localStorage.setItem('user', JSON.stringify(currentUser));
+          }
+
+          // 更新导航栏头像
+          updateGlobalAvatar();
+
+          showToast('头像上传成功', 'success');
+        } else {
+          showToast(saveResult.message, 'error');
+        }
+      } else {
+        showToast(result.message || '上传失败', 'error');
+      }
+    } catch (error) {
+      console.error('上传失败:', error);
+      showToast('上传失败，请重试', 'error');
+    }
+  });
+
+  function updateNavbarAvatar(avatarUrl) {
+    const usernameSpan = document.getElementById('username');
+    if (usernameSpan && usernameSpan.parentElement) {
+      // 在用户名前面添加头像
+      const existingAvatar = usernameSpan.parentElement.querySelector('.nav-avatar');
+      if (existingAvatar) existingAvatar.remove();
+
+      const avatarImg = document.createElement('img');
+      avatarImg.src = avatarUrl;
+      avatarImg.className = 'nav-avatar';
+      avatarImg.style.width = '28px';
+      avatarImg.style.height = '28px';
+      avatarImg.style.borderRadius = '50%';
+      avatarImg.style.objectFit = 'cover';
+      avatarImg.style.marginRight = '8px';
+      usernameSpan.parentElement.insertBefore(avatarImg, usernameSpan);
+    }
+  }
 </script>
 </body>
 </html>

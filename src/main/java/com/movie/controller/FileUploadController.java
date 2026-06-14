@@ -1,4 +1,3 @@
-// FileUploadController.java
 package com.movie.controller;
 
 import com.movie.dto.ApiResponse;
@@ -27,7 +26,7 @@ public class FileUploadController {
     private static final String UPLOAD_URL = "/uploads/";
 
     /**
-     * 上传图片
+     * 上传图片（自动创建目录）
      */
     @PostMapping("/image")
     public ApiResponse<?> uploadImage(@RequestParam("file") MultipartFile file,
@@ -55,7 +54,7 @@ public class FileUploadController {
             // 构建完整路径
             Path uploadDir = Paths.get(UPLOAD_BASE_PATH, dateDir);
 
-            // 确保目录存在
+            // ✅ 确保目录存在（自动创建）
             if (!Files.exists(uploadDir)) {
                 Files.createDirectories(uploadDir);
                 System.out.println("创建上传目录: " + uploadDir.toString());

@@ -22,4 +22,15 @@ public class Comment {
     private Double currentRating;
     private String replyToUsername;
     private List<Comment> replies;
+
+    private String userAvatar;  // 用户头像
+
+    // 添加 getter 和 setter
+    public String getUserAvatar() {
+        return userAvatar;
+    }
+
+    public void setUserAvatar(String userAvatar) {
+        this.userAvatar = userAvatar;
+    }
 }

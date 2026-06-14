@@ -1942,6 +1942,40 @@ body {
   --gray-50: #f9fafb;
 }
 
+.nav-avatar, .global-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--primary-light);
+}
+
+.profile-avatar {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 16px;
+  cursor: pointer;
+}
+
+.profile-avatar:hover .avatar-upload-hint {
+  opacity: 1;
+}
+
+.avatar-upload-hint {
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.comment-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--gray-200);
+  background: var(--gray-100);
+}
+
 .comment-item[data-level="0"] { background-color: var(--white); }
 .comment-item[data-level="1"] { background-color: var(--gray-50); }
 .comment-item[data-level="2"] { background-color: var(--gray-100); }

@@ -83,22 +83,24 @@ public class MovieService {
             movieMapper.insertMovie(movie);
         }
 
-        // 检查是否已收藏
+        // ✅ 修改：检查是否已收藏，如果已存在则返回错误（不允许重复添加）
         MovieCollection existing = movieMapper.findCollectionByUserAndMovie(userId, movie.getMovieId());
         if (existing != null) {
-            result.put("success", false);
-            result.put("message", "该电影已在收藏列表中");
+            // 如果已收藏，直接返回成功（不重复添加）
+            result.put("success", true);
+            result.put("message", "电影已在收藏列表中");
+            result.put("collectionId", existing.getCollectionId());
             return result;
         }
 
-        // 添加收藏
+        // 添加收藏记录（即使没有评分也可以）
         MovieCollection collection = new MovieCollection();
         collection.setUserId(userId);
         collection.setMovieId(movie.getMovieId());
-        collection.setPersonalRating(request.getPersonalRating());
-        collection.setWatchStatus(request.getWatchStatus());
-        collection.setPrivateReview(request.getPrivateReview());
-        collection.setCategoryId(request.getCategoryId()); // 设置分类
+        collection.setPersonalRating(request.getPersonalRating() != null ? request.getPersonalRating() : 0);
+        collection.setWatchStatus(request.getWatchStatus() != null ? request.getWatchStatus() : "想看");
+        collection.setPrivateReview(request.getPrivateReview() != null ? request.getPrivateReview() : "");
+        collection.setCategoryId(request.getCategoryId());
 
         movieMapper.insertCollection(collection);
 
