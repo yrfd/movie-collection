@@ -10,10 +10,18 @@ import com.movie.util.VerificationCodeUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.Date;
+import java.io.IOException;
 
 import javax.servlet.http.HttpServletRequest;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/user")
@@ -30,6 +38,9 @@ public class UserController {
 
     @Autowired
     private VerificationCodeService codeService;
+
+    @Autowired
+    private com.movie.mapper.UserMapper userMapper;
 
     private Integer getUserIdFromToken(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
@@ -53,14 +64,62 @@ public class UserController {
             return ApiResponse.error(401, "未登录");
         }
 
-        Map<String, Object> result = userService.uploadAvatar(userId, file);
-        boolean success = (Boolean) result.get("success");
-        if (success) {
-            Map<String, Object> data = new HashMap<>();
-            data.put("avatarUrl", result.get("avatarUrl"));
-            return ApiResponse.success((String) result.get("message"), data);
+        // 检查文件类型
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return ApiResponse.error(400, "只能上传图片文件");
         }
-        return ApiResponse.error(400, (String) result.get("message"));
+
+        // 检查文件大小（5MB）
+        if (file.getSize() > 5 * 1024 * 1024) {
+            return ApiResponse.error(400, "图片大小不能超过5MB");
+        }
+
+        try {
+            // 使用与轮播图相同的上传逻辑
+            String uploadBasePath = System.getProperty("user.dir") + File.separator + "uploads" + File.separator + "avatars";
+            String dateDir = new SimpleDateFormat("yyyy/MM/dd").format(new Date());
+            String fileName = userId + "_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString().substring(0, 8) + ".jpg";
+
+            Path uploadDir = Paths.get(uploadBasePath, dateDir);
+            if (!Files.exists(uploadDir)) {
+                Files.createDirectories(uploadDir);
+            }
+
+            Path filePath = uploadDir.resolve(fileName);
+            file.transferTo(filePath.toFile());
+
+            // 构建访问URL（与轮播图格式一致）
+            String avatarUrl = "/uploads/avatars/" + dateDir + "/" + fileName;
+
+            // 删除旧头像
+            User user = userMapper.findByUserId(userId);
+            if (user != null && user.getAvatar() != null && !user.getAvatar().isEmpty()) {
+                String oldPath = user.getAvatar().replace("/uploads/", "");
+                Path oldFilePath = Paths.get(System.getProperty("user.dir") + File.separator + "uploads", oldPath);
+                Files.deleteIfExists(oldFilePath);
+            }
+
+            // 更新数据库
+            userMapper.updateAvatar(userId, avatarUrl);
+
+            // 返回更新后的用户信息
+            User updatedUser = userMapper.findByUserId(userId);
+            Map<String, Object> data = new HashMap<>();
+            data.put("avatarUrl", avatarUrl);
+            data.put("user", Map.of(
+                    "userId", updatedUser.getUserId(),
+                    "username", updatedUser.getUsername(),
+                    "email", updatedUser.getEmail(),
+                    "avatar", updatedUser.getAvatar(),
+                    "createTime", updatedUser.getCreateTime()
+            ));
+
+            return ApiResponse.success("头像上传成功", data);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return ApiResponse.error(500, "上传失败：" + e.getMessage());
+        }
     }
 
     /**
@@ -361,5 +420,39 @@ public class UserController {
         if (email == null || email.isEmpty()) return false;
         String regex = "^[A-Za-z0-9+_.-]+@(.+)$";
         return email.matches(regex);
+    }
+
+    /**
+     * 保存头像URL（上传图片后调用）
+     */
+    @PostMapping("/avatar/save")
+    public ApiResponse<?> saveAvatar(@RequestBody Map<String, String> request, HttpServletRequest req) {
+        Integer userId = getUserIdFromToken(req);
+        if (userId == null) {
+            return ApiResponse.error(401, "未登录");
+        }
+
+        String avatarUrl = request.get("avatarUrl");
+        if (avatarUrl == null || avatarUrl.isEmpty()) {
+            return ApiResponse.error(400, "头像URL不能为空");
+        }
+
+        // 更新用户头像
+        userMapper.updateAvatar(userId, avatarUrl);
+
+        // 获取更新后的用户信息
+        User user = userMapper.findByUserId(userId);
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("avatarUrl", avatarUrl);
+        data.put("user", Map.of(
+                "userId", user.getUserId(),
+                "username", user.getUsername(),
+                "email", user.getEmail(),
+                "avatar", user.getAvatar(),
+                "createTime", user.getCreateTime()
+        ));
+
+        return ApiResponse.success("头像保存成功", data);
     }
 }

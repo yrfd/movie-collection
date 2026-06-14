@@ -18,6 +18,7 @@
         <result column="movie_name" property="movieName"/>
         <result column="current_rating" property="currentRating"/>
         <result column="reply_to_username" property="replyToUsername"/>
+        <result column="user_avatar" property="userAvatar"/>
         <!-- 递归查询回复 -->
         <collection property="replies" ofType="com.movie.entity.Comment"
                     select="findRepliesByParentId" column="comment_id"/>
@@ -25,23 +26,21 @@
 
     <!-- 查询顶级评论（reply_to 为 NULL 或 0） -->
     <select id="findCommentsByMovieId" resultMap="CommentMap">
-        SELECT c.*, u.username, m.movie_name, col.personal_rating as current_rating,
-               ru.username as reply_to_username
+        SELECT c.*, u.username, u.avatar as user_avatar, m.movie_name,
+        col.personal_rating as current_rating,
+        ru.username as reply_to_username
         FROM movie_comment c
-                 JOIN user u ON c.user_id = u.user_id
-                 JOIN movie_public m ON c.movie_id = m.movie_id
-                 LEFT JOIN movie_collection col ON col.user_id = c.user_id AND col.movie_id = c.movie_id
-                 LEFT JOIN user ru ON ru.user_id = c.reply_to
-        WHERE c.movie_id = #{movieId}
-          AND (c.reply_to IS NULL OR c.reply_to = 0)
+        JOIN user u ON c.user_id = u.user_id
+        JOIN movie_public m ON c.movie_id = m.movie_id
+        LEFT JOIN movie_collection col ON col.user_id = c.user_id AND col.movie_id = c.movie_id
+        LEFT JOIN user ru ON ru.user_id = c.reply_to
+        WHERE c.movie_id = #{movieId} AND (c.reply_to IS NULL OR c.reply_to = 0)
         ORDER BY c.create_time DESC
     </select>
 
     <!-- 查询回复（使用 resultMap 以支持递归嵌套） -->
     <select id="findRepliesByParentId" resultMap="CommentMap">
-        SELECT c.*,
-               u.username,
-               col.personal_rating as current_rating,
+        SELECT c.*, u.username, u.avatar as user_avatar, col.personal_rating as current_rating,
                ru.username as reply_to_username
         FROM movie_comment c
                  JOIN user u ON c.user_id = u.user_id
@@ -107,10 +106,14 @@
     </select>
 
     <select id="findCommentsByTmdbId" resultMap="CommentMap">
-        SELECT c.*, u.username, m.movie_name
+        SELECT c.*, u.username, u.avatar as user_avatar, m.movie_name,
+               col.personal_rating as current_rating,
+               ru.username as reply_to_username
         FROM movie_comment c
                  JOIN user u ON c.user_id = u.user_id
                  JOIN movie_public m ON c.movie_id = m.movie_id
+                 LEFT JOIN movie_collection col ON col.user_id = c.user_id AND col.movie_id = c.movie_id
+                 LEFT JOIN user ru ON ru.user_id = c.reply_to
         WHERE m.tmdb_id = #{tmdbId}
         ORDER BY c.create_time DESC
     </select>

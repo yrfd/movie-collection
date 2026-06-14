@@ -13,10 +13,7 @@ public class FileUploadUtil {
     private static final String UPLOAD_DIR = "uploads/avatars/";
 
     /**
-     * 上传头像
-     * @param file 上传的文件
-     * @param userId 用户ID
-     * @return 访问URL，失败返回null
+     * 上传头像（自动创建目录）
      */
     public static String uploadAvatar(MultipartFile file, Integer userId) {
         if (file == null || file.isEmpty()) {
@@ -35,10 +32,11 @@ public class FileUploadUtil {
         }
 
         try {
-            // 创建目录
+            // ✅ 创建目录（如果不存在）
             Path uploadPath = Paths.get(UPLOAD_DIR);
             if (!Files.exists(uploadPath)) {
                 Files.createDirectories(uploadPath);
+                System.out.println("创建上传目录: " + uploadPath.toAbsolutePath());
             }
 
             // 生成唯一文件名
@@ -70,9 +68,13 @@ public class FileUploadUtil {
         }
 
         try {
+            // 从URL中提取文件名
             String filename = avatarUrl.substring(avatarUrl.lastIndexOf("/") + 1);
             Path filePath = Paths.get(UPLOAD_DIR + filename);
-            Files.deleteIfExists(filePath);
+            if (Files.exists(filePath)) {
+                Files.delete(filePath);
+                System.out.println("删除旧头像: " + filePath.toAbsolutePath());
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }

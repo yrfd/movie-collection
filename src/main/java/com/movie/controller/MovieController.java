@@ -5,6 +5,7 @@ import com.movie.dto.CategoryRequest;
 import com.movie.dto.MovieRequest;
 import com.movie.entity.MovieCategory;
 import com.movie.entity.MovieCollection;
+import com.movie.entity.MoviePublic;
 import com.movie.service.MovieService;
 import com.movie.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,9 @@ public class MovieController {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private com.movie.mapper.MovieMapper movieMapper;
 
     private Integer getUserIdFromToken(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
@@ -207,6 +211,40 @@ public class MovieController {
             return ApiResponse.success((String) result.get("message"));
         }
         return ApiResponse.error(400, (String) result.get("message"));
+    }
+
+    @GetMapping("/info/{movieId}")
+    public ApiResponse<?> getMovieInfo(@PathVariable Integer movieId) {
+        MoviePublic movie = movieMapper.findMovieById(movieId);
+        if (movie == null) {
+            return ApiResponse.error(404, "电影不存在");
+        }
+        return ApiResponse.success(movie);
+    }
+
+    /**
+     * 添加电影到公共库（不创建收藏记录）
+     * 用于用户未收藏但想查看详情/评价的场景
+     */
+    @PostMapping("/add-to-library")
+    public ApiResponse<?> addMovieToLibrary(@RequestBody MovieRequest request) {
+        // 查找或创建公共电影（不创建收藏记录）
+        MoviePublic movie = movieMapper.findMovieByName(request.getMovieName());
+        if (movie == null) {
+            movie = new MoviePublic();
+            movie.setTmdbId(request.getTmdbId());
+            movie.setMovieName(request.getMovieName());
+            movie.setDirector(request.getDirector() != null ? request.getDirector() : "");
+            movie.setYear(request.getYear() != null ? request.getYear() : 0);
+            movie.setRegion(request.getRegion() != null ? request.getRegion() : "");
+            movie.setGenre(request.getGenre() != null ? request.getGenre() : "");
+            movie.setPosterUrl(request.getPosterUrl() != null ? request.getPosterUrl() : "");
+            movieMapper.insertMovie(movie);
+        }
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("movieId", movie.getMovieId());
+        return ApiResponse.success("成功", data);
     }
 
     @PostMapping("/admin/update-actors")

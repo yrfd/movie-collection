@@ -28,6 +28,7 @@ public class WebConfig implements WebMvcConfigurer {
         // 将 /uploads/** 请求映射到本地 uploads 目录
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + uploadPath);
+        
 
         // 保留原有的静态资源配置
         registry.addResourceHandler("/**")
