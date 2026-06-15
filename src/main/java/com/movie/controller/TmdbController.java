@@ -3,6 +3,8 @@ package com.movie.controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
+
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,8 +43,6 @@ public class TmdbController {
                 simplified.put("title", movie.get("title"));
                 simplified.put("poster_path", movie.get("poster_path"));
                 simplified.put("release_date", movie.get("release_date"));
-                // ✅ 修复注释：不返回 overview，减少数据量
-                // simplified.put("overview", "");  // 不返回简介，需要时单独请求
                 simplifiedResults.add(simplified);
             }
 
@@ -220,6 +220,72 @@ public class TmdbController {
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(json);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("{\"error\":\"" + e.getMessage() + "\"}");
+        }
+    }
+
+    @GetMapping(value = "/search/movie-by-person", produces = "application/json;charset=UTF-8")
+    public ResponseEntity<String> searchMovieByPerson(
+            @RequestParam String personName,
+            @RequestParam(defaultValue = "1") int page) {
+
+        try {
+            // 1. 搜索人员，取第一个（按 popularity 降序）
+            String searchPersonUrl = TMDB_BASE_URL + "/search/person?api_key=" + TMDB_API_KEY
+                    + "&language=zh-CN&query=" + URLEncoder.encode(personName, StandardCharsets.UTF_8);
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Accept", "application/json;charset=UTF-8");
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<byte[]> personResponse = restTemplate.exchange(searchPersonUrl, HttpMethod.GET, entity, byte[].class);
+            String personJson = new String(personResponse.getBody(), StandardCharsets.UTF_8);
+            Map<String, Object> personData = objectMapper.readValue(personJson, Map.class);
+            List<Map<String, Object>> personResults = (List<Map<String, Object>>) personData.get("results");
+            if (personResults == null || personResults.isEmpty()) {
+                // 尝试英文名（简单处理：将中文转拼音？这里直接返回空）
+                return ResponseEntity.ok("{\"results\":[],\"total_pages\":0,\"total_results\":0,\"page\":1}");
+            }
+            // 按 popularity 排序取第一个
+            personResults.sort((a, b) -> Double.compare(
+                    ((Number) b.getOrDefault("popularity", 0.0)).doubleValue(),
+                    ((Number) a.getOrDefault("popularity", 0.0)).doubleValue()
+            ));
+            int personId = (int) personResults.get(0).get("id");
+
+            // 2. 使用 with_people 参数查询电影（支持分页）
+            String discoverUrl = TMDB_BASE_URL + "/discover/movie?api_key=" + TMDB_API_KEY
+                    + "&language=zh-CN&page=" + page
+                    + "&with_people=" + personId;
+            ResponseEntity<byte[]> movieResponse = restTemplate.exchange(discoverUrl, HttpMethod.GET, entity, byte[].class);
+            String fullJson = new String(movieResponse.getBody(), StandardCharsets.UTF_8);
+            Map<String, Object> originalData = objectMapper.readValue(fullJson, Map.class);
+
+            // 3. 精简数据（与其它搜索接口保持一致）
+            List<Map<String, Object>> results = (List<Map<String, Object>>) originalData.get("results");
+            List<Map<String, Object>> simplifiedResults = new ArrayList<>();
+            if (results != null) {
+                for (Map<String, Object> movie : results) {
+                    Map<String, Object> simplified = new HashMap<>();
+                    simplified.put("id", movie.get("id"));
+                    simplified.put("title", movie.get("title"));
+                    simplified.put("poster_path", movie.get("poster_path"));
+                    simplified.put("release_date", movie.get("release_date"));
+                    simplifiedResults.add(simplified);
+                }
+            }
+
+            Map<String, Object> simplifiedData = new HashMap<>();
+            simplifiedData.put("page", originalData.get("page"));
+            simplifiedData.put("total_pages", originalData.get("total_pages"));
+            simplifiedData.put("total_results", originalData.get("total_results"));
+            simplifiedData.put("results", simplifiedResults);
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(objectMapper.writeValueAsString(simplifiedData));
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("{\"error\":\"" + e.getMessage() + "\"}");

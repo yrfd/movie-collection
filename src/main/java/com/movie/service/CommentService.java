@@ -118,43 +118,26 @@ public class CommentService {
     public Map<String, Object> addComment(Integer userId, CommentRequest request) {
         Map<String, Object> result = new HashMap<>();
 
-        MovieCollection collection = movieMapper.findCollectionByUserAndMovie(userId, request.getMovieId());
-
-        Double rating = 0.0;
-        boolean isRated = false;
-        if (collection != null && collection.getPersonalRating() != null && collection.getPersonalRating() > 0) {
-            rating = collection.getPersonalRating();
-            isRated = true;
-        }
-
-        // ✅ 删除原有的重复评价检查（如果允许同一电影多条评价）
-        // 如果只允许一条评价，保留此检查但移除收藏限制
-        Comment existingComment = commentMapper.findCommentByUserAndMovie(userId, request.getMovieId());
-        if (existingComment != null) {
-            // 如果允许重复评价，删除这段代码；如果只允许一条，保留但修改提示
+        MoviePublic movie = movieMapper.findMovieById(request.getMovieId());
+        if (movie == null) {
             result.put("success", false);
-            result.put("message", "你已经评价过这部电影了");
+            result.put("message", "电影不存在");
             return result;
         }
 
+        // 创建评论，不设置评分（snapshot_rating 可以为 NULL）
         Comment comment = new Comment();
         comment.setMovieId(request.getMovieId());
         comment.setUserId(userId);
         comment.setContent(request.getContent());
         comment.setReplyTo(0);
+        // 不设置 snapshot_rating，或者设为 null
 
         commentMapper.insertComment(comment);
 
-        updateMovieRating(request.getMovieId());
-
         result.put("success", true);
-        result.put("message", "发布成功");
+        result.put("message", "评价发布成功");
         result.put("commentId", comment.getCommentId());
-        result.put("rating", rating);
-        result.put("isRated", isRated);
-        if (!isRated) {
-            result.put("warning", "您尚未收藏该电影或未评分");
-        }
         return result;
     }
 
@@ -172,24 +155,16 @@ public class CommentService {
             return result;
         }
 
-        MovieCollection collection = movieMapper.findCollectionByUserAndMovie(userId, parentComment.getMovieId());
-        Double rating = 0.0;
-        if (collection != null && collection.getPersonalRating() != null && collection.getPersonalRating() > 0) {
-            rating = collection.getPersonalRating();
-        }
-
         Comment reply = new Comment();
         reply.setMovieId(parentComment.getMovieId());
         reply.setUserId(userId);
         reply.setContent(request.getContent());
         reply.setReplyTo(parentComment.getCommentId());
-
         commentMapper.insertComment(reply);
 
         result.put("success", true);
         result.put("message", "回复成功");
         result.put("commentId", reply.getCommentId());
-        result.put("rating", rating);
         return result;
     }
 

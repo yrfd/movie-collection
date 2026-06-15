@@ -62,9 +62,7 @@
     <!-- 插入评论 - 合并方案：同时支持回复和自动获取评分 -->
     <insert id="insertComment" useGeneratedKeys="true" keyProperty="commentId">
         INSERT INTO movie_comment (movie_id, user_id, content, reply_to, snapshot_rating)
-        SELECT #{movieId}, #{userId}, #{content}, #{replyTo}, col.personal_rating
-        FROM movie_collection col
-        WHERE col.user_id = #{userId} AND col.movie_id = #{movieId}
+        VALUES (#{movieId}, #{userId}, #{content}, #{replyTo}, #{snapshotRating})
     </insert>
 
     <update id="updateComment">
